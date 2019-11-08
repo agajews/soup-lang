@@ -24,18 +24,22 @@ data Value s = StringVal String
 -- data Rule s = Rule { runRule :: String -> ST s [(String, ST s (Value s))] }
 data Type s = Type (STRef s [[Value s]])
 
--- make rules return lists of results
-runRule :: String -> (forall s. ST s (Value s)) -> (EitherS String, ST s (EitherS (Value s)))
-runRule s vST = (s', valST) where
-    tupST = do
-        v <- vST
-        ret <- eval (FuncCall v [StringVal s])
-        return $ case ret of
-            Right (ListVal [StringVal s', val]) -> Right (s', val)
-            Left err -> Left err
-            _ -> Left "bad rule"
-    s' = runST $ tupST >>= return . (>>= return . fst)
-    valST = tupST >>= return . (>>= return . snd)
+extractRight :: Either a b -> b
+extractRight (Right x) = x
+extractRight _ = undefined
+
+runRule :: String -> (forall s. ST s (Value s)) -> EitherS (String, ST s (Value s))
+runRule s vST = case runST $ tupST >>= return . (>>= return . fst) of
+        Right s' -> Right (s', tupST >>= return . snd . extractRight)
+        Left err -> Left err
+    where
+        tupST = do
+            v <- vST
+            ret <- eval (FuncCall v [StringVal s])
+            return $ case ret of
+                Right (ListVal [StringVal s', val]) -> Right (s', val)
+                Left err -> Left err
+                _ -> Left "bad rule"
 
 -- replace type with value
 -- parse :: ST s (Type s) -> String -> ST s (EitherS [(String, ST s (Value s))])
