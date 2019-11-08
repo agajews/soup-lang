@@ -1,6 +1,7 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Quilt (
     Value(..),
-    Rule,
     Type,
     demo,
 ) where
@@ -9,6 +10,7 @@ import Control.Monad.ST
 import Control.Monad
 import Data.STRef
 import Data.List
+import Data.Either
 
 data Value s = StringVal String
              | IntVal Integer
@@ -19,28 +21,43 @@ data Value s = StringVal String
              | Lambda { params :: [STRef s (Maybe (Value s))],
                         body :: [Value s]}
 
-data Rule s = Rule { runRule :: String -> ST s [(String, ST s (Value s))] }
-data Type s = Type (STRef s [Rule s])
+-- data Rule s = Rule { runRule :: String -> ST s [(String, ST s (Value s))] }
+data Type s = Type (STRef s [[Value s]])
 
-parse :: Type s -> String -> ST s [(String, ST s (Value s))]
-parse (Type t) s = do
-    rules <- readSTRef t
-    results <- sequence $ map (`runRule` s) rules
-    return $ concat results
+-- make rules return lists of results
+runRule :: String -> (forall s. ST s (Value s)) -> (EitherS String, ST s (EitherS (Value s)))
+runRule s vST = (s', valST) where
+    tupST = do
+        v <- vST
+        ret <- eval (FuncCall v [StringVal s])
+        return $ case ret of
+            Right (ListVal [StringVal s', val]) -> Right (s', val)
+            Left err -> Left err
+            _ -> Left "bad rule"
+    s' = runST $ tupST >>= return . (>>= return . fst)
+    valST = tupST >>= return . (>>= return . snd)
 
-initType :: ST s (Type s)
-initType = do
-    rules <- newSTRef []
-    return $ Type rules
+-- replace type with value
+-- parse :: ST s (Type s) -> String -> ST s (EitherS [(String, ST s (Value s))])
+-- parse state s = do
+--     Type t <- state
+--     rules <- readSTRef t
+--     results <- sequence $ map (runRule s) rules
+--     return $ concat results
 
-parseStr :: String -> String
-parseStr s = runST $ do
-    t <- initType
-    results <- parse t s
-    output <- case filter (null . fst) results of
-        (_, v):_ -> v >>= eval
-        _ -> return $ Left "parsing error"
-    return $ show output
+-- initType :: ST s (Type s)
+-- initType = do
+--     rules <- newSTRef []
+--     return $ Type rules
+
+-- parseStr :: String -> String
+-- parseStr s = runST $ do
+--     t <- initType
+--     results <- parse t s
+--     output <- case filter (null . fst) results of
+--         (_, v):_ -> v >>= eval
+--         _ -> return $ Left "parsing error"
+--     return $ show output
 
 instance Show (Value s) where
     show (StringVal x) = show x
@@ -59,9 +76,13 @@ evalArgs = liftM sequence . mapM eval
 applyFunc :: (Value s) -> [Value s] -> ST s (EitherS (Value s))
 applyFunc f args = case f of
     PrimFunc p -> return $ p args
-    Lambda { params = ps, body = bs } -> do
+    Lambda { params = ps, body = bs } -> if (length ps) == (length args) then do
         forM (zip ps args) $ \(p, a) -> writeSTRef p (Just a)
         liftM last . mapM eval $ bs
+        else return $ Left $ concat ["number of arguments ",
+                                     "(", show (length args), ") ",
+                                     "does not match number of parameters ",
+                                     "(", show (length ps), ")"]
     _ -> return $ Left "attempting to call a non-function value"
         
 eval :: Value s -> ST s (EitherS (Value s))
