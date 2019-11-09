@@ -2,7 +2,6 @@
 
 module Quilt (
     Value(..),
-    Type,
     demo,
 ) where
 
@@ -11,6 +10,7 @@ import Control.Monad
 import Data.STRef
 import Data.List
 import Data.Either
+import Data.Maybe
 
 data Value s = StringVal String
              | IntVal Integer
@@ -22,32 +22,64 @@ data Value s = StringVal String
                         body :: [Value s]}
 
 -- data Rule s = Rule { runRule :: String -> ST s [(String, ST s (Value s))] }
-data Type s = Type (STRef s [[Value s]])
+-- data Type s = Type (STRef s [[Value s]])
+
+newtype ValueBox = ValueBox { unboxValue :: forall s. ST s (Value s) }
 
 extractRight :: Either a b -> b
 extractRight (Right x) = x
 extractRight _ = undefined
 
-runRule :: String -> (forall s. ST s (Value s)) -> EitherS (String, ST s (Value s))
-runRule s vST = case runST $ tupST >>= return . (>>= return . fst) of
-        Right s' -> Right (s', tupST >>= return . snd . extractRight)
-        Left err -> Left err
-    where
-        tupST = do
-            v <- vST
-            ret <- eval (FuncCall v [StringVal s])
-            return $ case ret of
-                Right (ListVal [StringVal s', val]) -> Right (s', val)
-                Left err -> Left err
-                _ -> Left "bad rule"
+extractJust :: Maybe a -> a
+extractJust (Just x) = x
+extractJust _ = undefined
 
--- replace type with value
--- parse :: ST s (Type s) -> String -> ST s (EitherS [(String, ST s (Value s))])
--- parse state s = do
---     Type t <- state
---     rules <- readSTRef t
---     results <- sequence $ map (runRule s) rules
---     return $ concat results
+processRule :: Value s -> EitherS (Maybe (String, Value s))
+processRule (ListVal [StringVal s, v]) = Right $ Just (s, v)
+processRule (ListVal []) = Right $ Nothing
+processRule _ = Left "bad rule"
+
+evalRule :: String -> Value s -> ST s (EitherS (Value s))
+evalRule s v = eval (FuncCall v [StringVal s])
+
+runRule :: String -> ValueBox -> EitherS (Maybe (String, ValueBox))
+runRule s vBox = (liftM . liftM) genOutput s' where
+    tupST :: ST s (EitherS (Maybe (String, Value s)))
+    tupST = liftM (>>= processRule) (unboxValue vBox >>= evalRule s)
+
+    s' :: EitherS (Maybe String)
+    s' = runST $ (liftM . liftM . liftM) fst tupST 
+
+    genOutput :: String -> (String, ValueBox)
+    genOutput s' = (s', ValueBox $ liftM (snd . extractJust . extractRight) tupST)
+
+processType :: Value s -> EitherS [Value s]
+processType (ListVal l) = Right l
+processType _ = Left "bad type"
+
+-- unsequence :: (Monad m) => m [a] -> [m a]
+-- unsequence m = liftM head m : unsequence (liftM tail m)
+
+unsequenceVB :: (forall s. ST s [Value s]) -> [ValueBox]
+unsequenceVB m = ValueBox (liftM head m) : unsequenceVB (liftM tail m)
+
+extractRules :: ValueBox -> EitherS [ValueBox]
+extractRules vBox = do
+    n <- runST $ liftM (liftM length . processType) $ unboxValue vBox
+    return $ take n $ unsequenceVB $ liftM (extractRight . processType) $ unboxValue vBox
+
+parse :: String -> ValueBox -> EitherS [(String, ValueBox)]
+parse s vBox = do
+    rules <- extractRules vBox
+    parsings <- mapM (runRule s) rules
+    return [p | Just p <- parsings]
+
+    -- parsing <- runRule s (head rules)
+    -- return [(extractJust parsing)]
+-- parse s vST = Right [(extractJust (extractRight (runRule s (head (extractRight (extractRules vST))))))]
+-- parse s vST = liftM catMaybes $ extractRules vST >>= getParsings where
+--     getParsings :: (forall s. [ST s (Value s)]) -> EitherS [Maybe (String, ST s (Value s))]
+--     getParsings rules = mapM (runRule s) rules
 
 -- initType :: ST s (Type s)
 -- initType = do
