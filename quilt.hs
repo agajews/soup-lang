@@ -21,9 +21,6 @@ data Value s = StringVal String
              | Lambda { params :: [STRef s (Maybe (Value s))],
                         body :: [Value s]}
 
--- data Rule s = Rule { runRule :: String -> ST s [(String, ST s (Value s))] }
--- data Type s = Type (STRef s [[Value s]])
-
 newtype ValueBox = ValueBox { unboxValue :: forall s. ST s (Value s) }
 
 extractRight :: Either a b -> b
@@ -57,9 +54,6 @@ processType :: Value s -> EitherS [Value s]
 processType (ListVal l) = Right l
 processType _ = Left "bad type"
 
--- unsequence :: (Monad m) => m [a] -> [m a]
--- unsequence m = liftM head m : unsequence (liftM tail m)
-
 unsequenceVB :: (forall s. ST s [Value s]) -> [ValueBox]
 unsequenceVB m = ValueBox (liftM head m) : unsequenceVB (liftM tail m)
 
@@ -74,26 +68,15 @@ parse s vBox = do
     parsings <- mapM (runRule s) rules
     return [p | Just p <- parsings]
 
-    -- parsing <- runRule s (head rules)
-    -- return [(extractJust parsing)]
--- parse s vST = Right [(extractJust (extractRight (runRule s (head (extractRight (extractRules vST))))))]
--- parse s vST = liftM catMaybes $ extractRules vST >>= getParsings where
---     getParsings :: (forall s. [ST s (Value s)]) -> EitherS [Maybe (String, ST s (Value s))]
---     getParsings rules = mapM (runRule s) rules
+initType :: ValueBox
+initType = ValueBox $ return $ ListVal []
 
--- initType :: ST s (Type s)
--- initType = do
---     rules <- newSTRef []
---     return $ Type rules
-
--- parseStr :: String -> String
--- parseStr s = runST $ do
---     t <- initType
---     results <- parse t s
---     output <- case filter (null . fst) results of
---         (_, v):_ -> v >>= eval
---         _ -> return $ Left "parsing error"
---     return $ show output
+parseStr :: String -> EitherS String
+parseStr s = do
+    parsings <- parse s initType
+    case filter (null . fst) parsings of
+        [(_, v)] -> Right $ runST $ liftM show (unboxValue v)
+        _ -> Left "parsing error"
 
 instance Show (Value s) where
     show (StringVal x) = show x
