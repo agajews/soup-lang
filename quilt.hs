@@ -2,9 +2,9 @@
 
 module Quilt (
     Value(..),
-    demo,
 ) where
 
+import Control.Applicative
 import Control.Monad.ST
 import Control.Monad
 import Data.STRef
@@ -68,6 +68,32 @@ parse s vBox = do
     parsings <- mapM (runRule s) rules
     return [p | Just p <- parsings]
 
+newtype Parser a = Parser { runParser :: String -> EitherS [(String, a)] }
+
+instance Monad Parser where
+    return x = Parser $ \s -> Right [(s, x)]
+    p >>= f = Parser $ \s -> do
+        l <- (runParser p) s
+        res <- sequence [(runParser $ f x) s' | (s', x) <- l]
+        return $ concat res
+
+instance Applicative Parser where
+    pure = return
+    (<*>) = ap
+
+instance Functor Parser where
+    fmap = liftM
+
+-- parseM :: ValueBox -> Parser ValueBox
+-- parseM s vBox = hoistEither $ parse s vBox
+
+-- intSum :: [Value s] -> EitherS (Value s)
+-- intSum [StringVal s] = do
+
+-- intPlus :: [Value s] -> EitherS (Value s)
+-- intPlus [IntVal a, IntVal b] = Right $ IntVal $ a + b
+-- intPlus _ = Left "invalid args to plus"
+
 initType :: ValueBox
 initType = ValueBox $ return $ ListVal []
 
@@ -126,11 +152,7 @@ eval (FuncCall fExp argExps) = do
         Right v -> v
         Left err -> return $ Left err
 
-plus :: [Value s] -> EitherS (Value s)
-plus [IntVal a, IntVal b] = Right $ IntVal $ a + b
-plus _ = Left "invalid args to plus"
-
-demo :: String
-demo = runST $ do
-    res <- eval $ FuncCall (PrimFunc plus) [IntVal 1, IntVal 1]
-    return $ show res
+-- demo :: String
+-- demo = runST $ do
+--     res <- eval $ FuncCall (PrimFunc plus) [IntVal 1, IntVal 1]
+--     return $ show res
