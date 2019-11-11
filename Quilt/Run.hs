@@ -13,9 +13,9 @@ import Control.Monad
 
 parseStr' :: String -> Either InterpError (Value, Env)
 parseStr' s = do
-    (parsings, _) <- runEval initEnv $ parse s initType
+    parsings <- runEval initEnv $ parse s initType
     case filter (null . snd) parsings of
-        [(v, _)] -> runEval initEnv v
+        [(v, _)] -> runEval' initEnv v
         [] -> Left ParsingError
         _ -> Left AmbiguousParsing
 
@@ -25,6 +25,5 @@ parseStr = liftM fst . parseStr'
 runStr :: String -> Either InterpError Value
 runStr s = do
     (expr, env) <- parseStr' s
-    (val, _) <- runEval env $ eval expr
-    return val
+    runEval env $ eval expr
 

@@ -14,7 +14,7 @@ localState :: Eval a -> Eval a
 localState v = do
     env <- get
     case runEval env v of
-        Right (v, _) -> return v
+        Right v -> return v
         Left err -> throwError err
 
 runRule :: String -> Eval Value -> Eval [(Eval Value, String)]

@@ -2,6 +2,7 @@ module Quilt.Eval (
     InterpError(..),
     Eval,
     runEval,
+    runEval',
     eval,
 ) where
 
@@ -12,8 +13,11 @@ import Control.Monad.Identity
 import Control.Monad.Except
 import Control.Monad.State
 
-runEval :: Env -> Eval a -> Either InterpError (a, Env)
-runEval env x = runIdentity (runExceptT (runStateT (unwrapEval x) env))
+runEval' :: Env -> Eval a -> Either InterpError (a, Env)
+runEval' env x = runIdentity (runExceptT (runStateT (unwrapEval x) env))
+
+runEval :: Env -> Eval a -> Either InterpError a
+runEval env x = liftM fst $ runIdentity (runExceptT (runStateT (unwrapEval x) env))
 
 eval :: Value -> Eval Value
 eval x@(StringVal _) = return x
