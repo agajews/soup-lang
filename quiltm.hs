@@ -121,6 +121,11 @@ parseStr s = do
         [] -> Left ParsingError
         _ -> Left AmbiguousParsing
     
+runStr :: String -> Either InterpError Value
+runStr s = do
+    expr <- parseStr s
+    (val, _) <- runEval emptyEnv $ eval expr
+    return val
 
 initType :: Eval Value
 initType = return $ ListVal $ map parserToValue [parseInt,
