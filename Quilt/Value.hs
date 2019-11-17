@@ -6,6 +6,7 @@ module Quilt.Value (
     Eval(..),
     Env(..),
     InterpError(..),
+    fork,
 ) where
 
 import Control.Monad.Identity
@@ -13,6 +14,8 @@ import Control.Monad.Except
 import Control.Monad.State
 
 import qualified Data.Map as Map
+
+import qualified Quilt.NondetStateT as N
 
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
@@ -36,12 +39,18 @@ data Value = StringVal String
            | Variable Ident
            | FuncCall Value [Value]
 
-newtype Eval a = Eval { unwrapEval :: StateT Env (ExceptT InterpError Identity) a }
+newtype Eval a = Eval { unwrapEval :: N.NondetStateT Env (ExceptT InterpError Identity) a }
     deriving (Functor,
               Applicative,
               Monad,
               MonadError InterpError,
               MonadState Env)
+
+fork :: [a] -> Eval a
+fork = Eval . N.fork
+
+runEval :: Env -> Eval a -> Either InterpError [(a, Env)]
+runEval env x = runIdentity (runExceptT (N.runNondetStateT (unwrapEval x) env))
 
 data Env = Env Integer (Map.Map Ident Value)
 

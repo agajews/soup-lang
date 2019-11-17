@@ -1,9 +1,11 @@
 module Quilt.Env (
     Env,
     emptyEnv,
-    genVar,
+    genIdent,
     getVar,
+    modifyVar,
     setVar,
+    deleteVar,
 ) where
 
 import Quilt.Value
@@ -41,5 +43,5 @@ modifyVar n f = do
 
 deleteVar :: Value -> Eval ()
 deleteVar (Variable n) = do
-    Env _ env <- get
+    Env m env <- get
     put $ Env m (Map.delete n env)

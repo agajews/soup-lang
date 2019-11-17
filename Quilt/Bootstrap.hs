@@ -1,6 +1,5 @@
 module Quilt.Bootstrap (
     initType,
-    initEnv,
 ) where
 
 import Quilt.Value
@@ -8,6 +7,7 @@ import Quilt.Env
 import Quilt.Eval
 import Quilt.Parse
 import Quilt.Parser
+import Quilt.Builtins
 
 import Control.Monad.Except
 import Data.Char
@@ -19,7 +19,8 @@ initType = do
     lambdaFun <- parserToValue $ lambdaParser pexpType
     topType <- genIdent
     topFun <- parserToValue $ topTypeParser topType
-    setVar pexpType $ ListVal [pexpFun, lambdaFun, topFun]
+    intFun <- parserToValue parseInt
+    setVar pexpType $ ListVal [pexpFun, topFun, lambdaFun, intFun]
     setVar topType $ ListVal [pexpFun]
 
     mapM setupBuiltin builtins
@@ -94,23 +95,3 @@ parseInt = do
 
 setupBuiltin :: (String, [Value] -> Eval Value) -> Eval Value
 setupBuiltin (name, f) = literalParser name (primFun f)
-
-intPlus :: [Value] -> Eval Value
-intPlus [IntVal x, IntVal y] = return $ IntVal (x + y)
-intPlus _ = throwError InvalidArguments
-
-intMinus :: [Value] -> Eval Value
-intMinus [IntVal x, IntVal y] = return $ IntVal (x - y)
-intMinus _ = throwError InvalidArguments
-
-builtins :: [(String, [Value] -> Eval Value)]
-builtins = [("+", intPlus),
-            ("-", intMinus)]
-
--- parseIntPlus :: Parser Value
--- parseIntPlus = do
---     x <- parseInt
---     parseString "+"
---     y <- parseInt
---     return $ FuncCall (PrimFunc intSum) [x, y]
-
