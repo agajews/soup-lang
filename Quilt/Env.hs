@@ -1,9 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-
 module Quilt.Env (
     Env,
     emptyEnv,
-    genIdent,
+    genVar,
     getVar,
     setVar,
 ) where
@@ -17,23 +15,31 @@ import qualified Data.Map as Map
 emptyEnv :: Env
 emptyEnv = Env 0 Map.empty
 
-genIdent :: (MonadState Env m) => m Ident
+genIdent :: Eval Ident
 genIdent = do
     Env n env <- get
     let n' = n + 1
     put $ Env n' env
     return $ Ident n'
 
-getVar :: (MonadState Env m, MonadError InterpError m) => Ident -> m Value
+getVar :: Ident -> Eval Value
 getVar n = do
     Env _ env <- get
     case Map.lookup n env of
         Just v -> return v
         Nothing -> throwError (UnboundVariable n)
 
-setVar :: (MonadState Env m) => Ident -> Value -> m ()
+setVar :: Ident -> Value -> Eval ()
 setVar n v = do
     Env m env <- get
     put $ Env m (Map.insert n v env)
-    return ()
 
+modifyVar :: Ident -> (Value -> Value) -> Eval ()
+modifyVar n f = do
+    v <- getVar n
+    setVar n (f v)
+
+deleteVar :: Value -> Eval ()
+deleteVar (Variable n) = do
+    Env _ env <- get
+    put $ Env m (Map.delete n env)

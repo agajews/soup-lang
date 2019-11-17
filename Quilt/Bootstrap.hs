@@ -12,44 +12,105 @@ import Quilt.Parser
 import Control.Monad.Except
 import Data.Char
 
-initEnv :: Env
-initEnv = emptyEnv
-
-topRules :: [Parser Value]
-topRules = [parseInt, parseIntPlus]
-
--- initTypes :: [Value]
--- initTypes = [initType]
-
--- typeToVar :: Value -> Eval Value
--- typeToVar t = do
---     n <- genIdent
---     setVar n $ ListVal [ListVal t]
---     return $ Variable n
-
 initType :: Eval Value
-initType = return $ ListVal [ListVal $ map parserToValue topRules]
+initType = do
+    pexpType <- genIdent
+    pexpFun <- parserToValue $ pexpParser pexpType
+    lambdaFun <- parserToValue $ lambdaParser pexpType
+    topType <- genIdent
+    topFun <- parserToValue $ topTypeParser topType
+    setVar pexpType $ ListVal [pexpFun, lambdaFun, topFun]
+    setVar topType $ ListVal [pexpFun]
+
+    mapM setupBuiltin builtins
+
+    return $ ListVal [parserToValue $ topParser topType]
+
+pexpParser :: Ident -> Parser Value
+pexpParser n = parseString "pexp" >> return (Variable n)
+
+topTypeParser :: Ident -> Parser Value
+topTypeParser n = parseString "top" >> return (Variable n)
+
+topParser :: Ident -> Parser Value
+topParser topType = parseNewlines' >> parseMany $ do
+    x <- parseType topType
+    parseNewlines
+    return x
+
+isWhitespace :: Char -> Bool
+isWhitespace = (`elem` [' ', '\n', '\t'])
+
+parseWS :: Parser String
+parseWS = parseWhile isWhitespace 
+
+parseWS' :: Parser String
+parseWS' = parseWhile' isWhitespace
+
+parseNewlines :: Parser String
+parseNewlines = parseWhile (== '\n')
+
+parseNewlines' :: Parser String
+parseNewlines' = parseWhile' (== '\n')
+
+parseIdent :: Parser String
+parseIdent = parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
+
+literalParser :: String -> Value -> Parser Value
+literalParser s v -> parseString s >> return v
+
+lambdaParser :: Ident -> Parser Value
+lambdaParser pexp = do
+    parseString "(lambda"
+    parseWS
+
+    parseString "("
+    paramNames <- parseInterspersed' parseIdent parseWS
+    paramIdents <- sequence $ replicate (length paramNames) genIdent
+    let paramParsers = liftM2 literalParser paramNames (map Variable paramIdents)
+    parseString ")"
+
+    parseWS
+    liftEval $ modifyVar pexp (pushRules paramParsers)
+    body <- parseType pexp
+    liftEval $ modifyVar pexp popRules
+    parseString ")"
+
+    return $ Lambda paramIdents body
+
+pushRules :: [Parser Value] -> Value -> Value
+pushRules ps l@(ListVal _) = ListVal $ (map parserToValue ps) ++ [l]
+pushRules _ _ = InvalidRule
+
+popRules :: Value -> Value
+popRules (ListVal [ListVal l]) = ListVal l
+popRules (ListVal (v:vs)) = popRules (ListVal vs)
+popRules _ = InvalidRule
 
 parseInt :: Parser Value
-parseInt = Parser $ \s -> case span isDigit s of
-    ((x:xs), rest) -> [(IntVal $ read (x:xs), rest)]
-    _ -> []
+parseInt = do
+    digit <- parseWhile isDigit
+    return $ read digit
 
-parseChar :: Char -> Parser ()
-parseChar c = Parser $ \s -> case s of
-    (c':rest) -> if c' == c then [((), rest)] else []
-    _ -> []
+setupBuiltin :: (String, [Value] -> Eval Value) -> Eval Value
+setupBuiltin (name, f) = literalParser name (primFun f)
 
-parseString :: String -> Parser ()
-parseString s = sequence_ $ map parseChar s
+intPlus :: [Value] -> Eval Value
+intPlus [IntVal x, IntVal y] = return $ IntVal (x + y)
+intPlus _ = throwError InvalidArguments
 
-parseIntPlus :: Parser Value
-parseIntPlus = do
-    x <- parseInt
-    parseChar '+'
-    y <- parseInt
-    return $ FuncCall (PrimFunc intSum) [x, y]
+intMinus :: [Value] -> Eval Value
+intMinus [IntVal x, IntVal y] = return $ IntVal (x - y)
+intMinus _ = throwError InvalidArguments
 
-intSum :: [Value] -> Eval Value
-intSum [IntVal x, IntVal y] = return $ IntVal (x + y)
-intSum _ = throwError InvalidArguments
+builtins :: [(String, [Value] -> Eval Value)]
+builtins = [("+", intPlus),
+            ("-", intMinus)]
+
+-- parseIntPlus :: Parser Value
+-- parseIntPlus = do
+--     x <- parseInt
+--     parseString "+"
+--     y <- parseInt
+--     return $ FuncCall (PrimFunc intSum) [x, y]
+

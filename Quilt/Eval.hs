@@ -28,13 +28,16 @@ eval x@(LambdaVal _ _) = return x
 eval (Variable n) = getVar n
 eval (FuncCall fExp argExps) = do
     fVal <- eval fExp
-    args <- mapM eval argExps
+    -- args <- mapM eval argExps
     case fVal of
         PrimFunc f -> f args
-        LambdaVal params body -> matchArgs params args >> eval body
+        LambdaVal params body -> do
+            res <- matchArgs params args >> eval body
+            mapM (deleteVar . Variable) params
+            return res
 
 matchArgs :: [Ident] -> [Value] -> Eval ()
-matchArgs (n:ns) (v:vs) = setVar n v >> matchArgs ns vs
+matchArgs (n:ns) (v:vs) = setVar (Variable n) v >> matchArgs ns vs
 matchArgs [] [] = return ()
 matchArgs _ [] = throwError TooFewArgs
 matchArgs [] _ = throwError TooManyArgs

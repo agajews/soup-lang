@@ -15,6 +15,7 @@ import Control.Monad.State
 import qualified Data.Map as Map
 
 data InterpError = UnboundVariable Ident
+                 | NotAVariable Value
                  | TooFewArgs
                  | TooManyArgs
                  | InvalidRule
