@@ -27,23 +27,23 @@ initType = do
 
     return $ ListVal [parserToVal $ topParser topType]
 
-pexpParser :: Ident -> Parser
+pexpParser :: Ident -> Parser Value
 pexpParser n = parseString "pexp" >> return (Variable n)
 
-topTypeParser :: Ident -> Parser
+topTypeParser :: Ident -> Parser Value
 topTypeParser n = parseString "top" >> return (Variable n)
 
-topParser :: Ident -> Parser
+topParser :: Ident -> Parser Value
 topParser topType = do
     parseNewlines'
     vals <- parseInterspersed (parseType topType) parseNewlines
     parseNewlines'
     return $ last vals
 
-literalParser :: String -> Value -> Parser
+literalParser :: String -> Value -> Parser Value
 literalParser s v = parseString s >> return v
 
-lambdaParser :: Ident -> Parser
+lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
@@ -65,7 +65,7 @@ lambdaParser pexp = do
 
     return $ Lambda paramIdents body
 
-pushRules :: [Parser] -> Value -> Eval Value
+pushRules :: [Parser Value] -> Value -> Eval Value
 pushRules ps l@(ListVal _) = return $ ListVal $ (map parserToVal ps) ++ [l]
 pushRules _ _ = throwError InvalidRule
 
@@ -74,28 +74,28 @@ popRules (ListVal [ListVal l]) = return $ ListVal l
 popRules (ListVal (v:vs)) = popRules (ListVal vs)
 popRules _ = throwError InvalidRule
 
-isWhitespace :: Char -> Bool
-isWhitespace = (`elem` [' ', '\n', '\t'])
-
-parseWS :: Parser
-parseWS = parseWhile isWhitespace 
-
-parseWS' :: Parser
-parseWS' = parseWhile' isWhitespace
-
-parseNewlines :: Parser
-parseNewlines = parseWhile (== '\n')
-
-parseNewlines' :: Parser
-parseNewlines' = parseWhile' (== '\n')
-
-parseIdent :: Parser
-parseIdent = parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
-
-parseInt :: Parser
+parseInt :: Parser Value
 parseInt = do
     digit <- parseWhile isDigit
     return $ IntVal $ read digit
+
+isWhitespace :: Char -> Bool
+isWhitespace = (`elem` [' ', '\n', '\t'])
+
+parseWS :: Parser String
+parseWS = parseWhile isWhitespace 
+
+parseWS' :: Parser String
+parseWS' = parseWhile' isWhitespace
+
+parseNewlines :: Parser String
+parseNewlines = parseWhile (== '\n')
+
+parseNewlines' :: Parser String
+parseNewlines' = parseWhile' (== '\n')
+
+parseIdent :: Parser String
+parseIdent = parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
 
 builtinParser :: (String, [Value] -> Eval Value) -> Value
 builtinParser (name, f) = parserToVal $ literalParser name (PrimFunc f)
