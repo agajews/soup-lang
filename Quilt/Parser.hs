@@ -1,6 +1,6 @@
 module Quilt.Parser (
     Parser(..),
-    parserToValue,
+    parserToVal,
     liftEval,
     parseType,
     parseString,
@@ -30,7 +30,6 @@ instance Monad ParserB where
         l <- runParserB p s
         xs <- sequence [runParserB (f x) s' | (x, s') <- l]
         return $ concat xs
-    -- p >>= f = Parser $ \s -> parse (runParser . f) s [runParser p]
 
 instance Applicative ParserB where
     pure = return
@@ -39,85 +38,106 @@ instance Applicative ParserB where
 instance Functor ParserB where
     fmap = liftM
 
-newtype Parser a = Parser { runParser :: (a -> ParserB a) -> ParserB a }
+newtype ParserC a = ParserC { runParserC :: (a -> ParserB Value) -> ParserB Value }
 
-instance Monad Parser where
-    return x = Parser $ \c -> c x
-    p >>= f = Parser $ \c -> runParser p $ \x -> runParser f x c
+instance Monad ParserC where
+    return x = ParserC $ \c -> c x
+    p >>= f = ParserC $ \c -> runParserC p $ \x -> runParserC (f x) c
 
-instance Applicative ParserB where
+instance Applicative ParserC where
     pure = return
     (<*>) = ap
 
-instance Functor ParserB where
+instance Functor ParserC where
     fmap = liftM
 
-liftParserB :: ParserB a -> Parser a
-liftParserB p = Parser $ \c -> p >>= c
+type Parser = ParserC Value
 
-parseFail :: Parser a
-parseFail = Parser $ \s -> return []
+runParser :: Parser -> (Value -> ParserB Value) -> String -> Eval [(Value, String)]
+runParser p c s = runParserB (runParserC p c) s
 
-liftEval :: Eval a -> Parser a
+liftParserB :: ParserB Value -> Parser
+liftParserB p = ParserC $ \c -> p >>= c
+
+lowerParser :: Parser -> ParserB Value
+lowerParser p = runParserC p return
+
+liftEval :: Eval Value -> Parser
 liftEval m = liftParserB $ ParserB $ \s -> do
     x <- m
     return [(x, s)]
 
-parserToValue :: Parser Value -> Value
-parserToValue p = PrimFunc $ \x -> case x of
+parsingToVal :: [(Value, String)] -> Value
+parsingToVal l = ListVal $ map (\(v, s') -> ListVal [v, StringVal s']) l
+
+parserBToVal :: ParserB Value -> Value
+parserBToVal p = PrimFunc $ \x -> case x of
     [StringVal s] -> do
-        l <- runParser p s
-        return $ ListVal $ map (\(v, s') -> ListVal [v, StringVal s']) l
+        l <- runParserB p s
+        return $ parsingToVal l
     _ -> throwError InvalidArguments
 
-contToValue :: (Value -> Parser Value) -> Value
-contToValue f = PrimFunc $ \x -> case x of
+parserToVal :: Parser -> Value
+parserToVal = parserBToVal . lowerParser
+
+contToVal :: (Value -> ParserB Value) -> Value
+contToVal c = PrimFunc $ \x -> case x of
     [v, StringVal s] -> do
-        l <- runParser (f v) s
-        return $ ListVal $ map (\(v, s') -> ListVal [v, StringVal s']) l
+        l <- runParserB (c v) s
+        return $ parsingToVal l
     _ -> throwError InvalidArguments
 
-catchFail :: Parser a -> Parser b -> (a -> Parser b) -> Parser b
-catchFail p failure success = Parser $ \s -> runParser p s >>= handleFailure s where
-    handleFailure s l
-        | null l = runParser failure s
-        | otherwise = liftM concat . sequence $ [runParser (success x) s' | (x, s') <- l]
+catchFail :: Parser -> Parser -> (Value -> Parser) -> Parser
+catchFail p failure success = ParserC $ \c -> ParserB $ \s -> runParser p c s >>= handleFailure s c where
+    handleFailure s c l
+        | null l = runParser failure c s
+        | otherwise = liftM concat . sequence $ [runParser (success x) c s' | (x, s') <- l]
 
-parseType :: Ident -> (Value -> Parser Value) -> Parser Value
-parseType n p = Parser $ \s -> do
+parseType :: Ident -> Parser
+parseType n = ParserC $ \c -> ParserB $ \s -> do
     rs <- eval (Variable n)
-    l <- parse (contToValue p) s rs
+    l <- parse (contToVal c) s rs
     return $ map (\v -> (v, "")) l
 
-parseString :: String -> Parser ()
-parseString m = Parser $ \s -> if isPrefixOf m s
-    then return [((), drop (length m) s)]
+simpleParser :: (String -> Eval [(Value, String)]) -> Parser
+simpleParser = liftParserB . ParserB
+
+parseString :: String -> Parser
+parseString m = simpleParser $ \s -> if isPrefixOf m s
+    then return [(StringVal m, drop (length m) s)]
     else return []
 
-parseWhile' :: (Char -> Bool) -> Parser String
-parseWhile' p = Parser $ \s -> return [span p s]
+parseWhile' :: (Char -> Bool) -> Parser
+parseWhile' p = simpleParser $ \s -> case span p s of
+    (m, s') -> return [(StringVal m, s')]
 
-parseWhile :: (Char -> Bool) -> Parser String
-parseWhile p = do
-    m <- parseWhile' p
-    if null m then parseFail else return m
+parseWhile :: (Char -> Bool) -> Parser
+parseWhile p = simpleParser $ \s -> case span p s of
+    ([], _) -> return []
+    (m, s') -> return [(StringVal m, s')]
 
-parseMany' p = catchFail p (return []) $ \x -> do
+fromListVal :: Value -> [Value]
+fromListVal (ListVal l) = l
+fromListVal _ = undefined
+
+parseMany' :: Parser -> Parser
+parseMany' p = catchFail p (return $ ListVal []) $ \x -> do
     xs <- parseMany' p
-    return (x:xs)
+    return $ ListVal (x:fromListVal xs)
 
+parseMany :: Parser -> Parser
 parseMany p = do
     x <- p
     xs <- parseMany p
-    return (x:xs)
+    return $ ListVal (x:fromListVal xs)
 
-parseInterspersed :: Parser a -> Parser b -> Parser [a]
+parseInterspersed :: Parser -> Parser -> Parser
 parseInterspersed p sep = do
     x <- p
     l <- parseMany' $ sep >> p
-    return (x:l)
+    return $ ListVal (x:fromListVal l)
 
-parseInterspersed' :: Parser a -> Parser b -> Parser [a]
-parseInterspersed' p sep = catchFail p (return []) $ \x -> do
+parseInterspersed' :: Parser -> Parser -> Parser
+parseInterspersed' p sep = catchFail p (return $ ListVal []) $ \x -> do
     l <- parseMany' $ sep >> p
-    return (x:l)
+    return $ ListVal (x:fromListVal l)

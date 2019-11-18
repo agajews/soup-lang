@@ -17,14 +17,14 @@ extractParsing (ListVal (ListVal [v, StringVal s'] : rest)) = do
 extractParsing (ListVal []) = return []
 extractParsing _ = throwError InvalidRule
 
--- evalRule :: Value -> [Value] -> Eval [(Value, String)]
--- evalRule r args = eval (FuncCall r args) >>= extractParsing
+evalRule :: Value -> [Value] -> Eval [(Value, String)]
+evalRule r args = eval (FuncCall r args) >>= extractParsing
 
-runRule :: ((Value, String) -> Eval [(Value, String)]) -> String -> Value -> Eval [(Value, String, Env)]
+runRule :: Value -> String -> Value -> Eval [(Value, String, Env)]
 runRule f s r = do
     startEnv <- get
-    ps <- eval (FuncCall r [StringVal s]) >>= extractParsing
-    ends <- mapM f ps
+    ps <- evalRule r [StringVal s]
+    ends <- mapM (\(v, s') -> evalRule f [v, StringVal s']) ps
     endEnv <- get
     put startEnv
     return $ map (\(v, s) -> (v, s, endEnv)) $ concat ends
@@ -37,24 +37,7 @@ extractRules (ListVal (x : rest)) = do
 extractRules (ListVal []) = return []
 extractRules _ = throwError InvalidType
 
--- runRule :: (a -> String -> Eval [(b, String)]) -> String -> (String -> Eval [(a, String)]) -> Eval [(b, String, Env)]
--- runRule f s r = do
---     startEnv <- get
---     ps <- r s
---     ends <- mapM (\(v, s) -> f v s) ps
---     endEnv <- get
---     put startEnv
---     return $ map (\(v, s) -> (v, s, endEnv)) $ concat ends
-
--- parse :: (a -> String -> Eval [(b, String)]) -> String -> [String -> Eval [(a, String)]] -> Eval [b]
--- parse f s rs = do
---     ends <- mapM (runRule f s) rs
---     case filter (\(_, s, _) -> null s) $ concat ends of
---         [(v, _, env)] -> put env >> return [v]
---         [] -> return []
---         _ -> throwError AmbiguousParsing
-
-parse :: ((Value, String) -> Eval [(Value, String)]) -> String -> Value -> Eval [Value]
+parse :: Value -> String -> Value -> Eval [Value]
 parse f s rs = do
     rules <- extractRules rs
     ends <- mapM (runRule f s) rules

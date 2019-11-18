@@ -17,6 +17,7 @@ parseStr' s = do
     case parsing of
         ([v], env) -> return (v, env)
         ([], _) -> throwError ParsingError
+        _ -> undefined
 
 emptyRule :: [Value] -> Eval Value
 emptyRule [v, StringVal s] = return $ ListVal [v, StringVal s]
