@@ -22,42 +22,44 @@ import Control.Applicative
 
 import Data.List
 
-newtype Parser a = Parser { runParser :: String -> Eval [(a, String)] }
+newtype ParserB a = ParserB { runParserB :: String -> Eval [(a, String)] }
 
-instance Monad Parser where
-    return x = Parser $ \s -> return [(x, s)]
-    p >>= f = Parser $ \s -> do
-        l <- runParser p s
-        xs <- sequence [runParser (f x) s' | (x, s') <- l]
+instance Monad ParserB where
+    return x = ParserB $ \s -> return [(x, s)]
+    p >>= f = ParserB $ \s -> do
+        l <- runParserB p s
+        xs <- sequence [runParserB (f x) s' | (x, s') <- l]
         return $ concat xs
+    -- p >>= f = Parser $ \s -> parse (runParser . f) s [runParser p]
 
-instance Applicative Parser where
+instance Applicative ParserB where
     pure = return
     (<*>) = ap
 
-instance Functor Parser where
+instance Functor ParserB where
     fmap = liftM
+
+newtype Parser a = Parser { runParser :: (a -> ParserB a) -> ParserB a }
+
+instance Monad Parser where
+    return x = Parser $ \c -> c x
+    p >>= f = Parser $ \c -> runParser p $ \x -> runParser f x c
+
+instance Applicative ParserB where
+    pure = return
+    (<*>) = ap
+
+instance Functor ParserB where
+    fmap = liftM
+
+liftParserB :: ParserB a -> Parser a
+liftParserB p = Parser $ \c -> p >>= c
 
 parseFail :: Parser a
 parseFail = Parser $ \s -> return []
 
--- parseReturn :: a -> String -> Eval [(a, Env, String)]
--- parseReturn x s' = do
---     env <- get
---     return [(x, env, s')]
-
--- bindParser :: (a -> Parser b) -> [(a, Env, String)] -> Eval [(b, Env, String)]
--- bindParser f l = liftM concat . sequence $ do
---     (x, env, s') <- l
---     return $ do
---         startEnv <- get
---         put env
---         t <- runParser (f x) s'
---         put startEnv
---         return t
-
 liftEval :: Eval a -> Parser a
-liftEval m = Parser $ \s -> do
+liftEval m = liftParserB $ ParserB $ \s -> do
     x <- m
     return [(x, s)]
 
