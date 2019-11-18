@@ -9,15 +9,18 @@ import Quilt.Eval
 import Quilt.Parse
 import Quilt.Bootstrap
 
-import Control.Monad
+import Control.Monad.Except
 
 parseStr' :: String -> Either InterpError (Value, Env)
 parseStr' s = do
-    parsings <- runEval emptyEnv $ initType >>= parse s
-    case filter (null . snd) parsings of
-        [(v, env, _)] -> Right (v, env)
-        [] -> Left ParsingError
-        _ -> Left AmbiguousParsing
+    parsing <- runEval emptyEnv $ initType >>= parse (PrimFunc emptyRule) s
+    case parsing of
+        ([v], env) -> return (v, env)
+        ([], _) -> throwError ParsingError
+
+emptyRule :: [Value] -> Eval Value
+emptyRule [v, StringVal s] = return $ ListVal [v, StringVal s]
+emptyRule _ = throwError InvalidArguments
 
 parseStr :: String -> Either InterpError Value
 parseStr = liftM fst . parseStr'
@@ -25,5 +28,5 @@ parseStr = liftM fst . parseStr'
 runStr :: String -> Either InterpError Value
 runStr s = do
     (expr, env) <- parseStr' s
-    runEval env $ eval expr
-
+    (v, _) <- runEval env $ eval expr
+    return v

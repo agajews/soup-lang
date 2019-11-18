@@ -36,10 +36,11 @@ setVar n v = do
     Env m env <- get
     put $ Env m (Map.insert n v env)
 
-modifyVar :: Ident -> (Value -> Value) -> Eval ()
+modifyVar :: Ident -> (Value -> Eval Value) -> Eval ()
 modifyVar n f = do
     v <- getVar n
-    setVar n (f v)
+    v' <- f v
+    setVar n v'
 
 deleteVar :: Value -> Eval ()
 deleteVar (Variable n) = do

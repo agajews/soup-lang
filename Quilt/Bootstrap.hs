@@ -15,15 +15,15 @@ import Data.Char
 initType :: Eval Value
 initType = do
     pexpType <- genIdent
-    pexpFun <- parserToValue $ pexpParser pexpType
-    lambdaFun <- parserToValue $ lambdaParser pexpType
+    let pexpFun = parserToValue $ pexpParser pexpType
+    let lambdaFun = parserToValue $ lambdaParser pexpType
     topType <- genIdent
-    topFun <- parserToValue $ topTypeParser topType
-    intFun <- parserToValue parseInt
-    setVar pexpType $ ListVal [pexpFun, topFun, lambdaFun, intFun]
-    setVar topType $ ListVal [pexpFun]
+    let topFun = parserToValue $ topTypeParser topType
+    let intFun = parserToValue parseInt
+    let builtinParsers = map builtinParser builtins
 
-    mapM setupBuiltin builtins
+    setVar pexpType $ ListVal $ [pexpFun, topFun, lambdaFun, intFun] ++ builtinParsers
+    setVar topType $ ListVal [pexpFun]
 
     return $ ListVal [parserToValue $ topParser topType]
 
@@ -34,10 +34,43 @@ topTypeParser :: Ident -> Parser Value
 topTypeParser n = parseString "top" >> return (Variable n)
 
 topParser :: Ident -> Parser Value
-topParser topType = parseNewlines' >> parseMany $ do
-    x <- parseType topType
-    parseNewlines
-    return x
+topParser topType = do
+    parseNewlines'
+    vals <- parseMany $ do
+        parseType topType $ \x -> do
+            parseNewlines
+            return x
+    return $ last vals
+
+literalParser :: String -> Value -> Parser Value
+literalParser s v = parseString s >> return v
+
+lambdaParser :: Ident -> Parser Value
+lambdaParser pexp = do
+    parseString "(lambda"
+    parseWS
+
+    parseString "("
+    paramNames <- parseInterspersed' parseIdent parseWS
+    paramIdents <- liftEval $ sequence $ replicate (length paramNames) genIdent
+    let paramParsers = liftM2 literalParser paramNames (map Variable paramIdents)
+    parseString ")"
+
+    parseWS
+    liftEval $ modifyVar pexp (pushRules paramParsers)
+    parseType pexp $ \body -> do
+        liftEval $ modifyVar pexp popRules
+        parseString ")"
+        return $ Lambda paramIdents body
+
+pushRules :: [Parser Value] -> Value -> Eval Value
+pushRules ps l@(ListVal _) = return $ ListVal $ (map parserToValue ps) ++ [l]
+pushRules _ _ = throwError InvalidRule
+
+popRules :: Value -> Eval Value
+popRules (ListVal [ListVal l]) = return $ ListVal l
+popRules (ListVal (v:vs)) = popRules (ListVal vs)
+popRules _ = throwError InvalidRule
 
 isWhitespace :: Char -> Bool
 isWhitespace = (`elem` [' ', '\n', '\t'])
@@ -57,41 +90,10 @@ parseNewlines' = parseWhile' (== '\n')
 parseIdent :: Parser String
 parseIdent = parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
 
-literalParser :: String -> Value -> Parser Value
-literalParser s v -> parseString s >> return v
-
-lambdaParser :: Ident -> Parser Value
-lambdaParser pexp = do
-    parseString "(lambda"
-    parseWS
-
-    parseString "("
-    paramNames <- parseInterspersed' parseIdent parseWS
-    paramIdents <- sequence $ replicate (length paramNames) genIdent
-    let paramParsers = liftM2 literalParser paramNames (map Variable paramIdents)
-    parseString ")"
-
-    parseWS
-    liftEval $ modifyVar pexp (pushRules paramParsers)
-    body <- parseType pexp
-    liftEval $ modifyVar pexp popRules
-    parseString ")"
-
-    return $ Lambda paramIdents body
-
-pushRules :: [Parser Value] -> Value -> Value
-pushRules ps l@(ListVal _) = ListVal $ (map parserToValue ps) ++ [l]
-pushRules _ _ = InvalidRule
-
-popRules :: Value -> Value
-popRules (ListVal [ListVal l]) = ListVal l
-popRules (ListVal (v:vs)) = popRules (ListVal vs)
-popRules _ = InvalidRule
-
 parseInt :: Parser Value
 parseInt = do
     digit <- parseWhile isDigit
-    return $ read digit
+    return $ IntVal $ read digit
 
-setupBuiltin :: (String, [Value] -> Eval Value) -> Eval Value
-setupBuiltin (name, f) = literalParser name (primFun f)
+builtinParser :: (String, [Value] -> Eval Value) -> Value
+builtinParser (name, f) = parserToValue $ literalParser name (PrimFunc f)

@@ -6,7 +6,7 @@ module Quilt.Value (
     Eval(..),
     Env(..),
     InterpError(..),
-    fork,
+    runEval,
 ) where
 
 import Control.Monad.Identity
@@ -14,8 +14,6 @@ import Control.Monad.Except
 import Control.Monad.State
 
 import qualified Data.Map as Map
-
-import qualified Quilt.NondetStateT as N
 
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
@@ -35,22 +33,19 @@ data Value = StringVal String
            | IntVal Integer
            | ListVal [Value]
            | PrimFunc ([Value] -> Eval Value)
-           | LambdaVal [Ident] Value
+           | Lambda [Ident] Value
            | Variable Ident
            | FuncCall Value [Value]
 
-newtype Eval a = Eval { unwrapEval :: N.NondetStateT Env (ExceptT InterpError Identity) a }
+newtype Eval a = Eval { unwrapEval :: StateT Env (ExceptT InterpError Identity) a }
     deriving (Functor,
               Applicative,
               Monad,
               MonadError InterpError,
               MonadState Env)
 
-fork :: [a] -> Eval a
-fork = Eval . N.fork
-
-runEval :: Env -> Eval a -> Either InterpError [(a, Env)]
-runEval env x = runIdentity (runExceptT (N.runNondetStateT (unwrapEval x) env))
+runEval :: Env -> Eval a -> Either InterpError (a, Env)
+runEval env x = runIdentity (runExceptT (runStateT (unwrapEval x) env))
 
 data Env = Env Integer (Map.Map Ident Value)
 
@@ -59,6 +54,6 @@ instance Show Value where
     show (IntVal x) = "IntVal " ++ show x
     show (ListVal x) = "ListVal " ++ show x
     show (PrimFunc _) = "PrimFunc"
-    show (LambdaVal ps b) = "Lambda " ++ show ps ++ " " ++ show b
+    show (Lambda ps b) = "Lambda " ++ show ps ++ " " ++ show b
     show (Variable n) = show n
     show (FuncCall v args) = "FuncCall " ++ show v ++ " " ++ show args
