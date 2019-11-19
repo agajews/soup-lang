@@ -25,6 +25,7 @@ eval (FuncCall f args) = do
             res <- matchArgs params args >> eval body
             mapM (deleteVar . Variable) params
             return res
+        _ -> throwError $ NotAFunction f'
 
 matchArgs :: [Ident] -> [Value] -> Eval ()
 matchArgs (n:ns) (v:vs) = setVar n v >> matchArgs ns vs

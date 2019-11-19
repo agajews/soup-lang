@@ -43,3 +43,13 @@ parse f s rs = do
         [(v, env)] -> put env >> return [v]
         [] -> return []
         _ -> throwError AmbiguousParsing
+
+parse' :: String -> [(Value, Value)] -> Eval [Value]
+parse' s l = do
+    ends <- forM l $ \(rs, f) -> do
+        rules <- extractRules rs
+        liftM concat $ mapM (runRule f s) rules
+    case concat ends of
+        [(v, env)] -> put env >> return [v]
+        [] -> return []
+        _ -> throwError AmbiguousParsing

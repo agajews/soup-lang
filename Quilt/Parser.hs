@@ -96,7 +96,6 @@ parseMany' p = catchFail (return []) (parseMany p)
 parseMany :: (Show a) => Parser a -> Parser [a]
 parseMany p = do
     x <- p
-    traceShow ("extracted: ", x) $ return ()
     xs <- parseMany' p
     return (x:xs)
 

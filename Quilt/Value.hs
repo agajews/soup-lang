@@ -17,6 +17,7 @@ import qualified Data.Map as Map
 
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
+                 | NotAFunction Value
                  | TooFewArgs
                  | TooManyArgs
                  | InvalidRule
