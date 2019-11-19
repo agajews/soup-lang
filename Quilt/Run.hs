@@ -7,21 +7,23 @@ import Quilt.Value
 import Quilt.Env
 import Quilt.Eval
 import Quilt.Parse
+import Quilt.Parser
 import Quilt.Bootstrap
 
 import Control.Monad.Except
 
 parseStr' :: String -> Either InterpError (Value, Env)
 parseStr' s = do
-    parsing <- runEval emptyEnv $ initType >>= parse (PrimFunc emptyRule) s
+    parsing <- runEval emptyEnv $ initType >>= parse (contToVal finalContinuation) s
     case parsing of
         ([v], env) -> return (v, env)
         ([], _) -> throwError ParsingError
         _ -> undefined
 
-emptyRule :: [Value] -> Eval Value
-emptyRule [v, StringVal s] = return $ ListVal [v, StringVal s]
-emptyRule _ = throwError InvalidArguments
+finalContinuation :: Value -> String -> Eval [Value]
+finalContinuation v s = return $ case s of
+    "" -> [v]
+    _ -> []
 
 parseStr :: String -> Either InterpError Value
 parseStr = liftM fst . parseStr'
