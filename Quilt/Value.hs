@@ -20,6 +20,7 @@ data InterpError = UnboundVariable Ident
                  | TooFewArgs
                  | TooManyArgs
                  | InvalidRule
+                 | InvalidContinuation
                  | InvalidType
                  | InvalidArguments
                  | ParsingError

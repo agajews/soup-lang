@@ -10,7 +10,10 @@ import Quilt.Parser
 import Quilt.Builtins
 
 import Control.Monad.Except
+
 import Data.Char
+
+import Debug.Trace
 
 initType :: Eval Value
 initType = do
@@ -23,7 +26,7 @@ initType = do
     let builtinParsers = map builtinParser builtins
 
     setVar pexpType $ ListVal $ [pexpFun, topFun, lambdaFun, intFun] ++ builtinParsers
-    setVar topType $ ListVal [pexpFun]
+    setVar topType $ ListVal [parserToVal $ parseType pexpType]
 
     return $ ListVal [parserToVal $ topParser topType]
 
@@ -41,7 +44,7 @@ topParser topType = do
     return $ last vals
 
 literalParser :: String -> Value -> Parser Value
-literalParser s v = parseString s >> return v
+literalParser s v = traceShow ("parsing " ++ s, v) $ parseString s >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do

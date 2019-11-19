@@ -22,6 +22,8 @@ import Control.Applicative
 
 import Data.List
 
+import Debug.Trace
+
 newtype ParserB a = ParserB { runParserB :: String -> Eval [(a, String)] }
 
 instance Monad ParserB where
@@ -50,6 +52,7 @@ instance Applicative Parser where
 
 instance Functor Parser where
     fmap = liftM
+
 
 runParser :: Parser a -> String -> (a -> ParserB Value) -> Eval [(Value, String)]
 runParser p s c = runParserB (unwrapParser p c) s
@@ -86,7 +89,7 @@ contToVal c = PrimFunc $ \x -> case x of
     _ -> throwError InvalidArguments
 
 parseType :: Ident -> Parser Value
-parseType n = Parser $ \c -> ParserB $ \s -> do
+parseType n = traceShow ("parsing ", n) $ Parser $ \c -> ParserB $ \s -> do
     rs <- eval (Variable n)
     l <- parse (contToVal c) s rs
     return $ map (\v -> (v, "")) l
@@ -107,10 +110,6 @@ parseWhile :: (Char -> Bool) -> Parser String
 parseWhile p = simpleParser $ \s -> case span p s of
     ([], _) -> return []
     (m, s') -> return [(m, s')]
-
-fromListVal :: Value -> [Value]
-fromListVal (ListVal l) = l
-fromListVal _ = undefined
 
 catchFail :: Parser a -> Parser a -> Parser a
 catchFail p' p = Parser $ \c -> ParserB $ \s -> do
