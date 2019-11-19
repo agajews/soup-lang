@@ -14,7 +14,9 @@ import Control.Monad.Except
 
 parseStr' :: String -> Either InterpError (Value, Env)
 parseStr' s = do
-    parsing <- runEval emptyEnv $ initType >>= parse (contToVal finalContinuation) s
+    parsing <- runEval emptyEnv $ do
+        t <- initType
+        parse s [(t, contToVal finalContinuation)]
     case parsing of
         ([v], env) -> return (v, env)
         ([], _) -> throwError ParsingError

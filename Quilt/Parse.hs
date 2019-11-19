@@ -35,17 +35,8 @@ extractRules (ListVal (x : rest)) = do
 extractRules (ListVal []) = return []
 extractRules _ = throwError InvalidType
 
-parse :: Value -> String -> Value -> Eval [Value]
-parse f s rs = do
-    rules <- extractRules rs
-    ends <- mapM (runRule f s) rules
-    case concat ends of
-        [(v, env)] -> put env >> return [v]
-        [] -> return []
-        _ -> throwError AmbiguousParsing
-
-parse' :: String -> [(Value, Value)] -> Eval [Value]
-parse' s l = do
+parse :: String -> [(Value, Value)] -> Eval [Value]
+parse s l = do
     ends <- forM l $ \(rs, f) -> do
         rules <- extractRules rs
         liftM concat $ mapM (runRule f s) rules

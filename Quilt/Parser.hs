@@ -67,7 +67,7 @@ contToVal c = PrimFunc $ \x -> case x of
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do
     rs <- eval (Variable n)
-    parse (contToVal c) s rs
+    parse s [(rs, contToVal c)]
 
 parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s
