@@ -7,12 +7,12 @@ import Quilt.Eval
 
 import Control.Monad.Except
 
-builtins :: [(String, [Value] -> Eval Value)]
+builtins :: [(String, Value)]
 builtins = [("+", function intPlus),
             ("-", function intMinus)]
 
-function :: ([Value] -> Eval Value) -> [Value] -> Eval Value
-function f args = mapM eval args >>= f
+function :: ([Value] -> Eval Value) -> Value
+function f = PrimFunc $ \args -> mapM eval args >>= f
 
 intPlus :: [Value] -> Eval Value
 intPlus [IntVal x, IntVal y] = return $ IntVal (x + y)

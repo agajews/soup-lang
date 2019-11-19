@@ -111,5 +111,5 @@ parseNewlines' = parseWhile' (== '\n')
 parseIdent :: Parser String
 parseIdent = parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
 
-builtinParser :: (String, [Value] -> Eval Value) -> Value
-builtinParser (name, f) = parserToVal $ literalParser name (PrimFunc f)
+builtinParser :: (String, Value) -> Value
+builtinParser (name, f) = parserToVal $ literalParser name f
