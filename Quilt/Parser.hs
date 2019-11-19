@@ -3,6 +3,7 @@ module Quilt.Parser (
     parserToVal,
     contToVal,
     liftEval,
+    catchFail,
     parseType,
     parseString,
     parseWhile,
@@ -22,6 +23,8 @@ import Control.Monad.State
 import Control.Applicative
 
 import Data.List
+
+import Debug.Trace
 
 newtype Parser a = Parser {
     runParser :: String -> (a -> String -> Eval [Value]) -> Eval [Value]
@@ -87,20 +90,21 @@ catchFail p' p = Parser $ \s c -> do
     then runParser p' s c
     else return l
 
-parseMany' :: Parser a -> Parser [a]
+parseMany' :: (Show a) => Parser a -> Parser [a]
 parseMany' p = catchFail (return []) (parseMany p)
 
-parseMany :: Parser a -> Parser [a]
+parseMany :: (Show a) => Parser a -> Parser [a]
 parseMany p = do
     x <- p
-    xs <- parseMany p
+    traceShow ("extracted: ", x) $ return ()
+    xs <- parseMany' p
     return (x:xs)
 
-parseInterspersed :: Parser a -> Parser b -> Parser [a]
+parseInterspersed :: (Show a) => Parser a -> Parser b -> Parser [a]
 parseInterspersed p sep = do
     x <- p
     xs <- parseMany' $ sep >> p
     return (x:xs)
 
-parseInterspersed' :: Parser a -> Parser b -> Parser [a]
+parseInterspersed' :: (Show a) => Parser a -> Parser b -> Parser [a]
 parseInterspersed' p sep = catchFail (return []) (parseInterspersed p sep)

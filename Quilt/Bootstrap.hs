@@ -22,10 +22,11 @@ initType = do
     let lambdaFun = parserToVal $ lambdaParser pexpType
     topType <- genIdent
     let topFun = parserToVal $ topTypeParser topType
+    let funcCallFun = parserToVal (parseFuncCall pexpType)
     let intFun = parserToVal parseInt
     let builtinParsers = map builtinParser builtins
 
-    setVar pexpType $ ListVal $ [pexpFun, topFun, lambdaFun, intFun] ++ builtinParsers
+    setVar pexpType $ ListVal $ [pexpFun, topFun, lambdaFun, funcCallFun, intFun] ++ builtinParsers
     setVar topType $ ListVal [parserToVal $ parseType pexpType]
 
     return $ ListVal [parserToVal $ topParser topType]
@@ -44,7 +45,7 @@ topParser topType = do
     return $ last vals
 
 literalParser :: String -> Value -> Parser Value
-literalParser s v = traceShow ("parsing " ++ s, v) $ parseString s >> return v
+literalParser s v = parseString s >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
@@ -76,6 +77,16 @@ popRules :: Value -> Eval Value
 popRules (ListVal [ListVal l]) = return $ ListVal l
 popRules (ListVal (v:vs)) = popRules (ListVal vs)
 popRules _ = throwError InvalidRule
+
+parseFuncCall :: Ident -> Parser Value
+parseFuncCall pexp = do
+    parseString "("
+    fun <- parseType pexp
+    args <- catchFail (return []) $ do
+        parseWS
+        parseInterspersed (parseType pexp) parseWS
+    parseString ")"
+    return $ FuncCall fun args
 
 parseInt :: Parser Value
 parseInt = do
