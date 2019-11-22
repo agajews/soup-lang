@@ -34,6 +34,6 @@ doParse [StringVal s, ListVal l] = do
     tuples <- mapM getTuples l
     parsings <- parse s tuples
     return $ ListVal parsings
-    where getTuples (ListVal [x, y]) = return (x, y)
+    where getTuples (FuncCall x [y]) = return (x, y)
           getTuples _ = throwError InvalidArguments
 doParse _ = throwError InvalidArguments

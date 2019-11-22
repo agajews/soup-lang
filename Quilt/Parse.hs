@@ -27,11 +27,13 @@ runRule f s r = do
     put startEnv
     return $ map (\v -> (v, endEnv)) ps
 
-extractRules :: Value -> Eval [Value]
+extractRules :: Value -> Eval [[Value]]
 extractRules (ListVal [l@(ListVal _)]) = extractRules l
 extractRules (ListVal (x : rest)) = do
     l <- extractRules (ListVal rest)
-    return (x:l)
+    return $ case l of
+        y:ys -> (x:y):ys
+        [] -> [[x]]
 extractRules (ListVal []) = return []
 extractRules _ = throwError InvalidType
 
@@ -39,7 +41,10 @@ parse :: String -> [(Value, Value)] -> Eval [Value]
 parse s l = do
     ends <- forM l $ \(rs, f) -> do
         rules <- extractRules rs
-        liftM concat $ mapM (runRule f s) rules
+        ends <- liftM (map concat) $ (mapM . mapM) (runRule f s) rules
+        return $ case filter (not . null) ends of
+            e:_ -> e
+            [] -> []
     case concat ends of
         [(v, env)] -> put env >> return [v]
         [] -> return []
