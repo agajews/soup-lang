@@ -28,7 +28,9 @@ runRule f s r = do
     return $ map (\v -> (v, endEnv)) ps
 
 extractRules :: Value -> Eval [[Value]]
-extractRules (ListVal [l@(ListVal _)]) = extractRules l
+extractRules (ListVal [l@(ListVal _)]) = do
+    rules <- extractRules l
+    return $ [] : rules
 extractRules (ListVal (x : rest)) = do
     l <- extractRules (ListVal rest)
     return $ case l of
