@@ -11,6 +11,7 @@ import Quilt.Parser
 import Quilt.Bootstrap
 
 import Control.Monad.Except
+import System.IO
 
 parseStr' :: String -> Either InterpError (Value, Env)
 parseStr' s = do
@@ -35,3 +36,6 @@ runStr s = do
     (expr, env) <- parseStr' s
     (v, _) <- runEval env $ eval expr
     return v
+
+parseFile :: String -> IO (Either InterpError Value)
+parseFile fname = readFile fname >>= return . parseStr

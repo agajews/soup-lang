@@ -9,9 +9,11 @@ import Quilt.Parse
 import Quilt.Parser
 import Quilt.Builtins
 
+import Control.Applicative
 import Control.Monad.Except
 
 import Data.Char
+import qualified Data.Map as Map
 
 import Debug.Trace
 
@@ -20,13 +22,17 @@ initType = do
     pexpType <- genIdent
     let pexpFun = parserToVal $ pexpParser pexpType
     let lambdaFun = parserToVal $ lambdaParser pexpType
+    let funcCallFun = parserToVal (parseFuncCall pexpType)
+    let runFun = parserToVal (parseRun pexpType)
+
     topType <- genIdent
     let topFun = parserToVal $ topTypeParser topType
-    let funcCallFun = parserToVal (parseFuncCall pexpType)
+
     let intFun = parserToVal parseInt
+    let strFun = parserToVal parseStr
     let builtinParsers = map builtinParser builtins
 
-    setVar pexpType $ ListVal $ [pexpFun, topFun, lambdaFun, funcCallFun, intFun] ++ builtinParsers
+    setVar pexpType $ ListVal $ [pexpFun, lambdaFun, funcCallFun, runFun, topFun, intFun, strFun] ++ builtinParsers
     setVar topType $ ListVal [parserToVal $ parseType pexpType]
 
     return $ ListVal [parserToVal $ topParser topType]
@@ -88,10 +94,32 @@ parseFuncCall pexp = do
     parseString ")"
     return $ FuncCall fun args
 
+parseRun :: Ident -> Parser Value
+parseRun pexp = do
+    parseString "(run"
+    parseWS
+    expr <- parseType pexp
+    parseString ")"
+    liftEval $ eval expr
+
 parseInt :: Parser Value
 parseInt = do
     digit <- parseWhile isDigit
     return $ IntVal $ read digit
+
+parseStr :: Parser Value
+parseStr = do
+    parseString "\""
+    s <- parseMany' $ parseIf (not . (== '\\')) <|> parseEscape
+    parseString "\""
+    return $ StringVal s
+    where
+        parseEscape = do
+            parseString "\\"
+            c <- parseIf (`Map.member` codes)
+            return $ codes Map.! c
+        codes = Map.fromList [('b', '\b'), ('n', '\n'), ('f', '\f'), ('r', '\r'),
+                              ('t', '\t'), ('\\', '\\'), ('\"', '\"')]
 
 isWhitespace :: Char -> Bool
 isWhitespace = (`elem` [' ', '\n', '\t'])

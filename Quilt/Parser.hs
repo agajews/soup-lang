@@ -6,6 +6,7 @@ module Quilt.Parser (
     catchFail,
     parseType,
     parseString,
+    parseIf,
     parseWhile,
     parseWhile',
     parseMany,
@@ -41,6 +42,10 @@ instance Applicative Parser where
 instance Functor Parser where
     fmap = liftM
 
+instance Alternative Parser where
+    empty = Parser $ \s c -> return []
+    p <|> q = Parser $ \s c -> liftM2 (++) (runParser p s c) (runParser q s c)
+
 liftEval :: Eval a -> Parser a
 liftEval m = Parser $ \s c -> do
     x <- m
@@ -73,6 +78,11 @@ parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s
     then c () $ drop (length m) s
     else return []
+
+parseIf :: (Char -> Bool) -> Parser Char
+parseIf p = Parser $ \s c -> case s of
+    x:s' -> if p x then c x s' else return []
+    _ -> return []
 
 parseWhile' :: (Char -> Bool) -> Parser String
 parseWhile' p = Parser $ \s c -> case span p s of
