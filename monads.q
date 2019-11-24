@@ -2,27 +2,51 @@
     (lambda (s c) (apply (lambda (m s c)
         (if (starts-with s m)
             (c (gen-var) (drop (length m) s))
-            (list))) "parse-str" s c))
+            (list)))
+        "parse-str" s c))
     pexp)))
 
 (run (set! parse-str (lambda (m s c) (apply (lambda (m s c)
     (if (starts-with s m)
         (c m (drop (length m) s))
-        (list))) m s c))))
+        (list)))
+    m s c))))
 
 (run (set! pexp (cons
     (lambda (s c)
-        (parse-str "prepend!" (eval s) (lambda (_ s)
+        (parse-str "declare-var" (eval s) (lambda (_ s)
         ((eval c) (gen-var) (eval s)))))
     pexp)))
 
-(run (set! prepend! (lambda (l x) (set! l (cons (eval x) (eval l))))))
+(set! define-var (lambda (name val) (apply (lambda (var) (do
+    (set! pexp (cons
+        (lambda (s c)
+            (parse-str (eval name) (eval s) (lambda (_ s)
+            ((eval c) var (eval s)))))
+        pexp))
+    (set! (eval var) val))) (gen-var))))
 
-(run (set! pexp (cons
-    (lambda (s c)
-        (parse-str "parse-while" (eval s) (lambda (_ s)
-        ((eval c) (gen-var) (eval s)))))
-    pexp)))
+(run (define-var "prepend!" (lambda (l x)
+    (apply set! l (cons x (eval l))))))
+
+(run (define-var "parse-while" (lambda (p s c) (apply (lambda (l)
+    (if (empty (head l))
+        (list)
+        ((eval c) (head l) (head (tail l)))))
+    (span (eval p) (eval s))))))
+
+(run (define-var "parse-ws" (lambda (s c)
+    (parse-while (lambda (x) (elem (list " " "\n" "\t") x)) (eval s) (eval c)))))
+
+(run (define-var "parse-ident" (lambda (s c)
+    (parse-while
+        (lambda (x) (or (is-alpha-num x) (elem (split-chars "~!@#$%^&*-=+_|'<>?") x)))
+        (eval s)
+        (lambda (name s) (apply (lambda (c name s)
+            (if (all is-digit (split-chars name))
+                (list)
+                (c name s)))
+            c name s))))))
 
 (run (prepend! pexp (lambda (s c)
     (parse-str "(define" (eval s) (lambda (_ s)
@@ -30,11 +54,8 @@
     (parse-ident (eval s) (lambda (name s)
     (parse-ws (eval s) (lambda (_ s)
     (parse (pexp (lambda (v s)
-    (parse-str ")" (eval s) (lambda (_ s) ((lambda (var) (do
-        (prepend! pexp (lambda (s' c')
-            (parse-str name (eval s') (lambda (_ s')
-            ((eval c') (eval var))))))
-        (set! (eval var) (eval v))
-        ((eval c) (list) (eval s)))) (gen-var))))))))))))))))))
+    (parse-str ")" (eval s) (lambda (_ s) (do
+        (define-var (eval name) (eval v))
+        ((eval c) (list) (eval s)))))))))))))))))))
 
 
