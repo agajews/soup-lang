@@ -16,8 +16,14 @@ builtins :: [(String, Value)]
 builtins = [("+", function $ intBinOp (+)),
             ("-", function $ intBinOp (-)),
             ("parse-str", function parseStr),
-            ("parse", function doParse),
-            ("gen-ident", function doGenIdent)]
+            ("parse", function parseFun),
+            ("gen-var", function genVar),
+            ("do", function doFun),
+            ("set!", PrimFunc set),
+            ("cons", function cons),
+            ("list", function list),
+            ("eval", function evalFun),
+            ("apply", PrimFunc apply)]
 
 function :: ([Value] -> Eval Value) -> Value
 function f = PrimFunc $ \args -> mapM eval args >>= f
@@ -31,15 +37,42 @@ parseStr [StringVal m, StringVal s, v] = eval $ FuncCall (parserToVal p) [String
     where p = parseString m >> return (StringVal m)
 parseStr _ = throwError InvalidArguments
 
-doGenIdent :: [Value] -> Eval Value
-doGenIdent [] = genIdent >>= return . Variable
-doGenIdent _ = throwError InvalidArguments
+genVar :: [Value] -> Eval Value
+genVar [] = genIdent >>= return . Variable
+genVar _ = throwError InvalidArguments
 
-doParse :: [Value] -> Eval Value
-doParse [StringVal s, ListVal l] = do
+parseFun :: [Value] -> Eval Value
+parseFun [StringVal s, ListVal l] = do
     tuples <- mapM getTuples l
     parsings <- parse s tuples
     return $ ListVal parsings
     where getTuples (FuncCall x [y]) = return (x, y)
           getTuples _ = throwError InvalidArguments
-doParse _ = throwError InvalidArguments
+parseFun _ = throwError InvalidArguments
+
+doFun :: [Value] -> Eval Value
+doFun args@(x:_) = return $ last args
+doFun _ = throwError InvalidArguments
+
+set :: [Value] -> Eval Value
+set [Variable n, v] = do
+    v' <- eval v
+    setVar n v'
+    return v'
+set _ = throwError InvalidArguments
+
+cons :: [Value] -> Eval Value
+cons [ListVal l, v] = return $ ListVal (v:l)
+cons _ = throwError InvalidArguments
+
+list :: [Value] -> Eval Value
+list args = return $ ListVal args
+
+evalFun :: [Value] -> Eval Value
+evalFun [v] = eval v
+evalFun _ = throwError InvalidArguments
+
+apply :: [Value] -> Eval Value
+apply (f:args) = do
+    args' <- mapM eval args
+    eval $ FuncCall f args'
