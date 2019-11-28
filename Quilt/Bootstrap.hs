@@ -48,7 +48,7 @@ topParser topType = do
     parseNewlines'
     vals <- parseInterspersed (parseType topType) parseNewlines
     parseNewlines'
-    return $ last vals
+    return $ ListVal vals
 
 literalParser :: String -> Value -> Parser Value
 literalParser s v = parseString s >> return v

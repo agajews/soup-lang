@@ -53,9 +53,16 @@
     (parse-ws (eval s) (lambda (_ s)
     (parse-ident (eval s) (lambda (name s)
     (parse-ws (eval s) (lambda (_ s)
-    (parse (pexp (lambda (v s)
-    (parse-str ")" (eval s) (lambda (_ s) (do
-        (define-var (eval name) (eval v))
-        ((eval c) (list) (eval s)))))))))))))))))))
+    (parse (pexp (lambda (val s)
+    (parse-str ")" (eval s) (lambda (_ s) (apply
+        (lambda (var val) (do
+            (prepend! pexp (lambda (s' c')
+                (parse-str name (eval s') (lambda (_ s')
+                ((eval c') var (eval s'))))))
+            ((eval c) (quote (set! var val) (eval s)))))
+        (gen-var)
+        (eval val))))))))))))))))))
 
-
+(define x (+ 3 4))
+(define y x)
+(* x y)

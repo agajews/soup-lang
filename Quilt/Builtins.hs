@@ -15,6 +15,7 @@ import Control.Monad.Except
 builtins :: [(String, Value)]
 builtins = [("+", function $ intBinOp (+)),
             ("-", function $ intBinOp (-)),
+            ("*", function $ intBinOp (*)),
             ("parse-str", function parseStr),
             ("parse", function parseFun),
             ("gen-var", function genVar),
@@ -23,7 +24,8 @@ builtins = [("+", function $ intBinOp (+)),
             ("cons", function cons),
             ("list", function list),
             ("eval", function evalFun),
-            ("apply", PrimFunc apply)]
+            ("apply", PrimFunc apply),
+            ("quote", PrimFunc quote)]
 
 function :: ([Value] -> Eval Value) -> Value
 function f = PrimFunc $ \args -> mapM eval args >>= f
@@ -76,3 +78,7 @@ apply :: [Value] -> Eval Value
 apply (f:args) = do
     args' <- mapM eval args
     eval $ FuncCall f args'
+
+quote :: [Value] -> Eval Value
+quote [v] = return v
+quote _ = throwError InvalidArguments

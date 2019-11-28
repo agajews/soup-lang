@@ -13,13 +13,13 @@ import Quilt.Bootstrap
 import Control.Monad.Except
 import System.IO
 
-parseStr' :: String -> Either InterpError (Value, Env)
+parseStr' :: String -> Either InterpError ([Value], Env)
 parseStr' s = do
     parsing <- runEval emptyEnv $ do
         t <- initType
         parse s [(t, contToVal finalContinuation)]
     case parsing of
-        ([v], env) -> return (v, env)
+        ([ListVal l], env) -> return (l, env)
         ([], _) -> throwError ParsingError
         _ -> undefined
 
@@ -28,14 +28,14 @@ finalContinuation v s = return $ case s of
     "" -> [v]
     _ -> []
 
-parseStr :: String -> Either InterpError Value
+parseStr :: String -> Either InterpError [Value]
 parseStr = liftM fst . parseStr'
     
 runStr :: String -> Either InterpError Value
 runStr s = do
-    (expr, env) <- parseStr' s
-    (v, _) <- runEval env $ eval expr
-    return v
+    (exprs, env) <- parseStr' s
+    (vals, _) <- runEval env $ mapM eval exprs
+    return $ last vals
 
-parseFile :: String -> IO (Either InterpError Value)
+parseFile :: String -> IO (Either InterpError [Value])
 parseFile fname = readFile fname >>= return . parseStr
