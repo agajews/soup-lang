@@ -30,8 +30,14 @@ data InterpError = UnboundVariable Ident
                  | AmbiguousParsing [Value]
     deriving (Show)
 
-newtype Ident = Ident Integer
-    deriving (Show, Eq, Ord)
+data Ident = Ident String Integer
+    deriving (Show)
+
+instance Eq Ident where
+    (Ident _ x) == (Ident _ y) = x == y
+
+instance Ord Ident where
+    (Ident _ x) <= (Ident _ y) = x <= y
 
 data Value = StringVal String
            | IntVal Integer
@@ -62,7 +68,7 @@ instance Show Value where
         else "(list " ++ intercalate " " (map show l) ++ ")"
     show (PrimFunc name _) = "prim:" ++ name
     show (Lambda ps b) = "lambda"
-    show (Variable (Ident x)) = "var:" ++ show x
+    show (Variable (Ident name x)) = "var:" ++ name ++ ":" ++ show x
     show (FuncCall v args) = if null args
         then "(" ++ show v ++ ")"
         else "(" ++ show v ++ " " ++ intercalate " " (map show args) ++ ")"

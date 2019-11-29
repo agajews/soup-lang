@@ -19,13 +19,13 @@ import Debug.Trace
 
 initType :: Eval Value
 initType = do
-    pexpType <- genIdent
+    pexpType <- genIdent "pexp"
     let pexpFun = parserToVal "parser:pexp-name" $ pexpParser pexpType
     let lambdaFun = parserToVal "parser:lambda" $ lambdaParser pexpType
     let funcCallFun = parserToVal "parser:func-call" $ parseFuncCall pexpType
     let runFun = parserToVal "run" $ parseRun pexpType
 
-    topType <- genIdent
+    topType <- genIdent "top"
     let topFun = parserToVal "top" $ topTypeParser topType
 
     let intFun = parserToVal "parser:int" parseInt
@@ -61,7 +61,7 @@ lambdaParser pexp = do
     parseString "("
 
     paramNames <- parseInterspersed' parseIdent parseWS
-    paramIdents <- liftEval $ sequence $ replicate (length paramNames) genIdent
+    paramIdents <- liftEval $ mapM genIdent paramNames
     let paramParsers = zipWith literalParser paramNames (map Variable paramIdents)
 
     parseString ")"

@@ -38,7 +38,7 @@ builtins = [function "+" $ intBinOp (+),
 
 function :: String -> ([Value] -> Eval Value) -> (String, Value)
 function name f = (name, PrimFunc name func) where
-    func args = traceShow (name, args) $ mapM eval args >>= wrapInvalidArgs f name
+    func args = mapM eval args >>= wrapInvalidArgs f name
 
 macro :: String -> ([Value] -> Eval Value) -> (String, Value)
 macro name f = (name, PrimFunc name $ \args -> wrapInvalidArgs f name args)
@@ -55,7 +55,7 @@ intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
 intBinOp _ _ = throwError $ InvalidArguments
 
 genVar :: [Value] -> Eval Value
-genVar [] = genIdent >>= return . Variable
+genVar [StringVal name] = genIdent name >>= return . Variable
 genVar _ = throwError InvalidArguments
 
 parseFun :: [Value] -> Eval Value
@@ -117,7 +117,7 @@ set :: [Value] -> Eval Value
 set [Variable n, v] = do
     v' <- eval v
     setVar n v'
-    return v'
+    return $ ListVal []
 set _ = throwError InvalidArguments
 
 ifFun :: [Value] -> Eval Value

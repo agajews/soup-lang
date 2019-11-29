@@ -17,12 +17,12 @@ import qualified Data.Map as Map
 emptyEnv :: Env
 emptyEnv = Env 0 Map.empty
 
-genIdent :: Eval Ident
-genIdent = do
+genIdent :: String -> Eval Ident
+genIdent name = do
     Env n env <- get
     let n' = n + 1
     put $ Env n' env
-    return $ Ident n'
+    return $ Ident name n'
 
 getVar :: Ident -> Eval Value
 getVar n = do
