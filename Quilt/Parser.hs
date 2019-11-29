@@ -51,8 +51,8 @@ liftEval m = Parser $ \s c -> do
     x <- m
     c x s
 
-parserToVal :: Parser Value -> Value
-parserToVal p = PrimFunc $ \x -> case x of
+parserToVal :: String -> Parser Value -> Value
+parserToVal name p = PrimFunc $ \x -> case x of
     [StringVal s, c] -> do
         l <- runParser p s $ \v s' -> do
             y <- eval $ FuncCall c [v, StringVal s']
@@ -60,19 +60,19 @@ parserToVal p = PrimFunc $ \x -> case x of
                 ListVal l' -> return l'
                 _ -> throwError InvalidContinuation
         return $ ListVal l
-    _ -> throwError InvalidArguments
+    _ -> throwError $ InvalidArguments' name x
 
-contToVal :: (Value -> String -> Eval [Value]) -> Value
-contToVal c = PrimFunc $ \x -> case x of
+contToVal :: String -> (Value -> String -> Eval [Value]) -> Value
+contToVal name c = PrimFunc $ \x -> case x of
     [v, StringVal s] -> do
         l <- c v s
         return $ ListVal l
-    _ -> throwError InvalidArguments
+    _ -> throwError $ InvalidArguments' name x
 
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do
     rs <- eval (Variable n)
-    parse s [(rs, contToVal c)]
+    parse s [(rs, contToVal "--continuation--" c)]
 
 parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s

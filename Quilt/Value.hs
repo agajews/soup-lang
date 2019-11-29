@@ -24,8 +24,9 @@ data InterpError = UnboundVariable Ident
                  | InvalidContinuation
                  | InvalidType
                  | InvalidArguments
+                 | InvalidArguments' String [Value]
                  | ParsingError
-                 | AmbiguousParsing
+                 | AmbiguousParsing [Value]
     deriving (Show)
 
 newtype Ident = Ident Integer
@@ -50,12 +51,13 @@ runEval :: Env -> Eval a -> Either InterpError (a, Env)
 runEval env x = runIdentity (runExceptT (runStateT (unwrapEval x) env))
 
 data Env = Env Integer (Map.Map Ident Value)
+    deriving (Show)
 
 instance Show Value where
-    show (StringVal x) = "StringVal " ++ show x
-    show (IntVal x) = "IntVal " ++ show x
-    show (ListVal x) = "ListVal " ++ show x
+    show (StringVal x) = "(StringVal " ++ show x ++ ")"
+    show (IntVal x) = "(IntVal " ++ show x ++ ")"
+    show (ListVal x) = "(ListVal " ++ show x ++ ")"
     show (PrimFunc _) = "PrimFunc"
-    show (Lambda ps b) = "Lambda " ++ show ps ++ " " ++ show b
+    show (Lambda ps b) = "(Lambda " ++ show ps ++ " " ++ show b ++ ")"
     show (Variable n) = show n
-    show (FuncCall v args) = "FuncCall " ++ show v ++ " " ++ show args
+    show (FuncCall v args) = "(FuncCall " ++ show v ++ " " ++ show args ++ ")"

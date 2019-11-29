@@ -12,32 +12,43 @@ import Quilt.Parser
 
 import Control.Monad.Except
 
-builtins :: [(String, Value)]
-builtins = [("+", function $ intBinOp (+)),
-            ("-", function $ intBinOp (-)),
-            ("*", function $ intBinOp (*)),
-            ("parse-str", function parseStr),
-            ("parse", function parseFun),
-            ("gen-var", function genVar),
-            ("do", function doFun),
-            ("set!", PrimFunc set),
-            ("cons", function cons),
-            ("list", function list),
-            ("eval", function evalFun),
-            ("apply", PrimFunc apply),
-            ("quote", PrimFunc quote)]
+import Data.List
 
-function :: ([Value] -> Eval Value) -> Value
-function f = PrimFunc $ \args -> mapM eval args >>= f
+builtins :: [(String, Value)]
+builtins = [function "+" $ intBinOp (+),
+            function "-" $ intBinOp (-),
+            function "*" $ intBinOp (*),
+            function "parse" parseFun,
+            function "gen-var" genVar,
+            function "do" doFun,
+            function "cons" cons,
+            function "list" list,
+            function "eval" evalFun,
+            function "starts-with" startsWith,
+            function "length" lengthFun,
+            function "drop" dropFun,
+            macro "set!" set,
+            macro "if" ifFun,
+            macro "apply" apply,
+            macro "quote" quote]
+
+function :: String -> ([Value] -> Eval Value) -> (String, Value)
+function name f = (name, PrimFunc func) where
+    func args = mapM eval args >>= wrapInvalidArgs f name
+
+macro :: String -> ([Value] -> Eval Value) -> (String, Value)
+macro name f = (name, PrimFunc $ \args -> wrapInvalidArgs f name args)
+
+wrapInvalidArgs :: ([Value] -> Eval Value) -> String -> [Value] -> Eval Value
+wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of
+    InvalidArguments -> throwError $ InvalidArguments' name args
+    _ -> throwError err
+
+-- Functions
 
 intBinOp :: (Integer -> Integer -> Integer) -> [Value] -> Eval Value
 intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
-intBinOp _ _ = throwError InvalidArguments
-
-parseStr :: [Value] -> Eval Value
-parseStr [StringVal m, StringVal s, v] = eval $ FuncCall (parserToVal p) [StringVal s, v]
-    where p = parseString m >> return (StringVal m)
-parseStr _ = throwError InvalidArguments
+intBinOp _ _ = throwError $ InvalidArguments
 
 genVar :: [Value] -> Eval Value
 genVar [] = genIdent >>= return . Variable
@@ -56,15 +67,8 @@ doFun :: [Value] -> Eval Value
 doFun args@(x:_) = return $ last args
 doFun _ = throwError InvalidArguments
 
-set :: [Value] -> Eval Value
-set [Variable n, v] = do
-    v' <- eval v
-    setVar n v'
-    return v'
-set _ = throwError InvalidArguments
-
 cons :: [Value] -> Eval Value
-cons [ListVal l, v] = return $ ListVal (v:l)
+cons [v, ListVal l] = return $ ListVal (v:l)
 cons _ = throwError InvalidArguments
 
 list :: [Value] -> Eval Value
@@ -74,6 +78,39 @@ evalFun :: [Value] -> Eval Value
 evalFun [v] = eval v
 evalFun _ = throwError InvalidArguments
 
+startsWith :: [Value] -> Eval Value
+startsWith [StringVal s, StringVal m] = return $ if isPrefixOf s m
+    then StringVal m
+    else ListVal []
+startsWith _ = throwError InvalidArguments
+
+dropFun :: [Value] -> Eval Value
+dropFun [IntVal n, ListVal l] = return $ ListVal $ drop' n l where
+    drop' 0 l = l
+    drop' n (x:xs) = drop' (n-1) xs
+    drop' _ [] = []
+dropFun _ = throwError InvalidArguments
+
+lengthFun :: [Value] -> Eval Value
+lengthFun [ListVal l] = return $ IntVal $ toInteger $ length l
+lengthFun _ = throwError InvalidArguments
+
+-- Macros
+
+set :: [Value] -> Eval Value
+set [Variable n, v] = do
+    v' <- eval v
+    setVar n v'
+    return v'
+set _ = throwError InvalidArguments
+
+ifFun :: [Value] -> Eval Value
+ifFun [cond, thenExpr, elseExpr] = do
+    b <- eval cond
+    case b of
+        ListVal [] -> eval elseExpr
+        _ -> eval thenExpr
+
 apply :: [Value] -> Eval Value
 apply (f:args) = do
     args' <- mapM eval args
@@ -82,3 +119,4 @@ apply (f:args) = do
 quote :: [Value] -> Eval Value
 quote [v] = return v
 quote _ = throwError InvalidArguments
+

@@ -1,0 +1,15 @@
+[(Lambda [Ident 3,Ident 4,Ident 5] (
+    FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 3]),(FuncCall Ident 3 [(FuncCall PrimFunc []),(FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3]),Ident 3])]),(FuncCall PrimFunc [])]))]
+
+[(Lambda [Ident 3,Ident 4,Ident 5] (
+    FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 3]),(FuncCall Ident 3 [(FuncCall PrimFunc []),(FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3]),Ident 4])]),(FuncCall PrimFunc [])]))]
+
+((Lambda [Ident 3,Ident 4,Ident 5] (
+    FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 3]),(FuncCall Ident 3 [(FuncCall PrimFunc []),(FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3]),Ident 5])]),(FuncCall PrimFunc [])])))
+
+
+(Lambda [Ident 3,Ident 4,Ident 5] (FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 3])]))
+
+(Lambda [Ident 3,Ident 4,Ident 5] (FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 4])]))
+
+(Lambda [Ident 3,Ident 4,Ident 5] (FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 5])]))

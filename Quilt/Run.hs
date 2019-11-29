@@ -17,7 +17,7 @@ parseStr' :: String -> Either InterpError ([Value], Env)
 parseStr' s = do
     parsing <- runEval emptyEnv $ do
         t <- initType
-        parse s [(t, contToVal finalContinuation)]
+        parse s [(t, contToVal "final-continuation" finalContinuation)]
     case parsing of
         ([ListVal l], env) -> return (l, env)
         ([], _) -> throwError ParsingError

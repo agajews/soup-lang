@@ -50,4 +50,4 @@ parse s l = do
     case concat ends of
         [(v, env)] -> put env >> return [v]
         [] -> return []
-        _ -> throwError AmbiguousParsing
+        e -> throwError $ AmbiguousParsing (map fst e)

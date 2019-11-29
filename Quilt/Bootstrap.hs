@@ -20,22 +20,22 @@ import Debug.Trace
 initType :: Eval Value
 initType = do
     pexpType <- genIdent
-    let pexpFun = parserToVal $ pexpParser pexpType
-    let lambdaFun = parserToVal $ lambdaParser pexpType
-    let funcCallFun = parserToVal (parseFuncCall pexpType)
-    let runFun = parserToVal (parseRun pexpType)
+    let pexpFun = parserToVal "parser:pexp-name" $ pexpParser pexpType
+    let lambdaFun = parserToVal "parser:lambda" $ lambdaParser pexpType
+    let funcCallFun = parserToVal "parser:func-call" $ parseFuncCall pexpType
+    let runFun = parserToVal "run" $ parseRun pexpType
 
     topType <- genIdent
-    let topFun = parserToVal $ topTypeParser topType
+    let topFun = parserToVal "top" $ topTypeParser topType
 
-    let intFun = parserToVal parseInt
-    let strFun = parserToVal parseStr
+    let intFun = parserToVal "parser:int" parseInt
+    let strFun = parserToVal "parser:str" parseStr
     let builtinParsers = map builtinParser builtins
 
     setVar pexpType $ ListVal $ [pexpFun, lambdaFun, funcCallFun, runFun, topFun, intFun, strFun] ++ builtinParsers
-    setVar topType $ ListVal [parserToVal $ parseType pexpType]
+    setVar topType $ ListVal [parserToVal "parser:pexp" $ parseType pexpType]
 
-    return $ ListVal [parserToVal $ topParser topType]
+    return $ ListVal [parserToVal "parser:top" $ topParser topType]
 
 pexpParser :: Ident -> Parser Value
 pexpParser n = parseString "pexp" >> return (Variable n)
@@ -62,12 +62,12 @@ lambdaParser pexp = do
 
     paramNames <- parseInterspersed' parseIdent parseWS
     paramIdents <- liftEval $ sequence $ replicate (length paramNames) genIdent
-    let paramParsers = liftM2 literalParser paramNames (map Variable paramIdents)
+    let paramParsers = zipWith literalParser paramNames (map Variable paramIdents)
 
     parseString ")"
     parseWS
 
-    liftEval $ modifyVar pexp (pushRules paramParsers)
+    liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
     body <- parseType pexp
     liftEval $ modifyVar pexp popRules
 
@@ -75,9 +75,9 @@ lambdaParser pexp = do
 
     return $ Lambda paramIdents body
 
-pushRules :: [Parser Value] -> Value -> Eval Value
-pushRules ps l@(ListVal _) = return $ ListVal $ (map parserToVal ps) ++ [l]
-pushRules _ _ = throwError InvalidRule
+pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
+pushRules names ps l@(ListVal _) = return $ ListVal $ (zipWith parserToVal names ps) ++ [l]
+pushRules _ _ _ = throwError InvalidRule
 
 popRules :: Value -> Eval Value
 popRules (ListVal [ListVal l]) = return $ ListVal l
@@ -143,4 +143,4 @@ parseIdent = do
     return name
 
 builtinParser :: (String, Value) -> Value
-builtinParser (name, f) = parserToVal $ literalParser name f
+builtinParser (name, f) = parserToVal name $ literalParser name f
