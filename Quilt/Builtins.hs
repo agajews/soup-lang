@@ -83,7 +83,7 @@ evalFun [v] = eval v
 evalFun _ = throwError InvalidArguments
 
 startsWith :: [Value] -> Eval Value
-startsWith [StringVal s, StringVal m] = return $ if isPrefixOf s m
+startsWith [StringVal s, StringVal m] = return $ if isPrefixOf m s
     then StringVal m
     else ListVal []
 startsWith _ = throwError InvalidArguments

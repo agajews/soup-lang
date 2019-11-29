@@ -2,7 +2,7 @@
     (lambda (s c) (apply (lambda (m s c)
         (if (starts-with s m)
             (apply c
-                (gen-var)
+                (gen-var "parse-str")
                 (list->str (drop
                     (length (str->list m))
                     (str->list s))))
