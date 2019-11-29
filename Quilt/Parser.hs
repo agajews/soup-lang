@@ -52,22 +52,25 @@ liftEval m = Parser $ \s c -> do
     c x s
 
 parserToVal :: String -> Parser Value -> Value
-parserToVal name p = PrimFunc $ \x -> case x of
-    [StringVal s, c] -> do
-        l <- runParser p s $ \v s' -> do
-            y <- eval $ FuncCall c [v, StringVal s']
-            case y of
-                ListVal l' -> return l'
-                _ -> throwError InvalidContinuation
-        return $ ListVal l
-    _ -> throwError $ InvalidArguments' name x
+parserToVal name p = PrimFunc $ \args -> do
+    args <- mapM eval args
+    case args of
+        [StringVal s, c] -> do
+            l <- runParser p s $ \v s' -> do
+                y <- eval $ FuncCall c [v, StringVal s']
+                case y of
+                    ListVal l' -> return l'
+                    _ -> throwError InvalidContinuation
+            return $ ListVal l
+        _ -> throwError $ InvalidArguments' name args
 
 contToVal :: String -> (Value -> String -> Eval [Value]) -> Value
-contToVal name c = PrimFunc $ \x -> case x of
-    [v, StringVal s] -> do
-        l <- c v s
-        return $ ListVal l
-    _ -> throwError $ InvalidArguments' name x
+contToVal name c = PrimFunc $ \args -> do
+    case args of
+        [v, StringVal s] -> do
+            l <- c v s
+            return $ ListVal l
+        _ -> throwError $ InvalidArguments' name args
 
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do

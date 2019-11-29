@@ -1,28 +1,28 @@
 (run (set! pexp (cons
     (lambda (s c) (apply (lambda (m s c)
         (if (starts-with s m)
-            (c (gen-var) (drop (length m) s))
+            (apply c (gen-var) (drop (length m) s))
             (list)))
         "parse-str" s c))
     pexp)))
 
 (run (set! parse-str (lambda (m s c) (apply (lambda (m s c)
     (if (starts-with s m)
-        (c m (drop (length m) s))
+        (apply c m (drop (length m) s))
         (list)))
     m s c))))
 
 (run (set! pexp (cons
     (lambda (s c)
         (parse-str "declare-var" (eval s) (lambda (_ s)
-        ((eval c) (gen-var) (eval s)))))
+        (apply (eval c) (gen-var) (eval s)))))
     pexp)))
 
 (set! define-var (lambda (name val) (apply (lambda (var) (do
     (set! pexp (cons
         (lambda (s c)
             (parse-str (eval name) (eval s) (lambda (_ s)
-            ((eval c) var (eval s)))))
+            (apply (eval c) var (eval s)))))
         pexp))
     (set! (eval var) val))) (gen-var))))
 
@@ -32,7 +32,7 @@
 (run (define-var "parse-while" (lambda (p s c) (apply (lambda (l)
     (if (empty (head l))
         (list)
-        ((eval c) (head l) (head (tail l)))))
+        (apply (eval c) (head l) (head (tail l)))))
     (span (eval p) (eval s))))))
 
 (run (define-var "parse-ws" (lambda (s c)
@@ -58,8 +58,8 @@
         (lambda (var val) (do
             (prepend! pexp (lambda (s' c')
                 (parse-str name (eval s') (lambda (_ s')
-                ((eval c') var (eval s'))))))
-            ((eval c) (quote (set! var val) (eval s)))))
+                (apply (eval c') (quote var) (eval s'))))))
+            (apply (eval c) (quote (apply set! var val)) (eval s))))
         (gen-var)
         (eval val))))))))))))))))))
 

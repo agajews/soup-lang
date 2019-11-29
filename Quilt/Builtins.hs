@@ -2,6 +2,7 @@
 
 module Quilt.Builtins (
     builtins,
+    quote',
 ) where
 
 import Quilt.Value
@@ -43,6 +44,9 @@ wrapInvalidArgs :: ([Value] -> Eval Value) -> String -> [Value] -> Eval Value
 wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of
     InvalidArguments -> throwError $ InvalidArguments' name args
     _ -> throwError err
+
+quote' :: Value
+quote' = snd $ macro "quote" quote
 
 -- Functions
 

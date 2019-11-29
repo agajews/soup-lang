@@ -22,7 +22,8 @@ eval (FuncCall f args) = do
     case f' of
         PrimFunc f' -> f' args
         Lambda params body -> do
-            res <- matchArgs params args >> eval body
+            matchArgs params args
+            res <- eval body
             mapM (deleteVar . Variable) params
             return res
         _ -> throwError $ NotAFunction f'

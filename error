@@ -13,3 +13,5 @@
 (Lambda [Ident 3,Ident 4,Ident 5] (FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 4])]))
 
 (Lambda [Ident 3,Ident 4,Ident 5] (FuncCall PrimFunc [(FuncCall PrimFunc [Ident 3,Ident 5])]))
+
+(run (set! pexp (cons (lambda (s c) ((eval c) (list) (eval s))) pexp)))
