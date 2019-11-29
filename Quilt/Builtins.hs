@@ -108,6 +108,7 @@ listToStr v = listToStr' v >>= return . StringVal where
     listToStr' [ListVal ((StringVal s) : rest)] = do
         s' <- listToStr' [ListVal rest]
         return $ s ++ s'
+    listToStr' [ListVal []] = return ""
     listToStr' _ = throwError InvalidArguments
 
 -- Macros
