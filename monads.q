@@ -2,7 +2,7 @@
     (lambda (s c) (apply (lambda (m s c)
         (if (starts-with s m)
             (apply c
-                (gen-var)
+                (gen-var "parse-str")
                 (list->str (drop
                     (length (str->list m))
                     (str->list s))))
@@ -12,27 +12,25 @@
 
 (run (set! parse-str (lambda (m s c) (apply (lambda (m s c)
     (if (starts-with s m)
-        (apply c
-            (gen-var)
-            (list->str (drop
-                (length (str->list m))
-                (str->list s))))
+        (apply c m (list->str (drop
+            (length (str->list m))
+            (str->list s))))
         (list)))
     (eval m) (eval s) (eval c)))))
 
 (run (set! pexp (cons
     (lambda (s c)
         (parse-str "declare-var" (eval s) (lambda (_ s)
-        (apply (eval c) (gen-var) (eval s)))))
+        (apply (eval c) (gen-var "declare-var")) (eval s)))))
     pexp)))
 
-(set! define-var (lambda (name val) (apply (lambda (var) (do
+(set! define-var (lambda (name val) (apply (lambda (name) (apply (lambda (var) (do
     (set! pexp (cons
         (lambda (s c)
             (parse-str (eval name) (eval s) (lambda (_ s)
             (apply (eval c) var (eval s)))))
         pexp))
-    (set! (eval var) val))) (gen-var))))
+    (set! (eval var) val))) (gen-var name))) name)))
 
 (run (define-var "prepend!" (lambda (l x)
     (apply set! l (cons x (eval l))))))
