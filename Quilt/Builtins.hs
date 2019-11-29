@@ -2,7 +2,6 @@
 
 module Quilt.Builtins (
     builtins,
-    quote',
 ) where
 
 import Quilt.Value
@@ -14,6 +13,8 @@ import Quilt.Parser
 import Control.Monad.Except
 
 import Data.List
+
+import Debug.Trace
 
 builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
@@ -34,19 +35,16 @@ builtins = [function "+" $ intBinOp (+),
             macro "quote" quote]
 
 function :: String -> ([Value] -> Eval Value) -> (String, Value)
-function name f = (name, PrimFunc func) where
-    func args = mapM eval args >>= wrapInvalidArgs f name
+function name f = (name, PrimFunc name func) where
+    func args = traceShow (name, args) $ mapM eval args >>= wrapInvalidArgs f name
 
 macro :: String -> ([Value] -> Eval Value) -> (String, Value)
-macro name f = (name, PrimFunc $ \args -> wrapInvalidArgs f name args)
+macro name f = (name, PrimFunc name $ \args -> wrapInvalidArgs f name args)
 
 wrapInvalidArgs :: ([Value] -> Eval Value) -> String -> [Value] -> Eval Value
 wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of
     InvalidArguments -> throwError $ InvalidArguments' name args
     _ -> throwError err
-
-quote' :: Value
-quote' = snd $ macro "quote" quote
 
 -- Functions
 

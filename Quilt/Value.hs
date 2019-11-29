@@ -14,6 +14,7 @@ import Control.Monad.Except
 import Control.Monad.State
 
 import qualified Data.Map as Map
+import Data.List
 
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
@@ -35,7 +36,7 @@ newtype Ident = Ident Integer
 data Value = StringVal String
            | IntVal Integer
            | ListVal [Value]
-           | PrimFunc ([Value] -> Eval Value)
+           | PrimFunc String ([Value] -> Eval Value)
            | Lambda [Ident] Value
            | Variable Ident
            | FuncCall Value [Value]
@@ -54,10 +55,14 @@ data Env = Env Integer (Map.Map Ident Value)
     deriving (Show)
 
 instance Show Value where
-    show (StringVal x) = "(StringVal " ++ show x ++ ")"
-    show (IntVal x) = "(IntVal " ++ show x ++ ")"
-    show (ListVal x) = "(ListVal " ++ show x ++ ")"
-    show (PrimFunc _) = "PrimFunc"
-    show (Lambda ps b) = "(Lambda " ++ show ps ++ " " ++ show b ++ ")"
-    show (Variable n) = show n
-    show (FuncCall v args) = "(FuncCall " ++ show v ++ " " ++ show args ++ ")"
+    show (StringVal x) = show x
+    show (IntVal x) = show x
+    show (ListVal l) = if null l
+        then "(list)"
+        else "(list " ++ intercalate " " (map show l) ++ ")"
+    show (PrimFunc name _) = "prim:" ++ name
+    show (Lambda ps b) = "lambda"
+    show (Variable (Ident x)) = "var:" ++ show x
+    show (FuncCall v args) = if null args
+        then "(" ++ show v ++ ")"
+        else "(" ++ show v ++ " " ++ intercalate " " (map show args) ++ ")"

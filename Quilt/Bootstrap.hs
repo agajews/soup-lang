@@ -62,8 +62,7 @@ lambdaParser pexp = do
 
     paramNames <- parseInterspersed' parseIdent parseWS
     paramIdents <- liftEval $ sequence $ replicate (length paramNames) genIdent
-    let paramParsers = zipWith literalParser paramNames (map quotedIdent paramIdents) where
-        quotedIdent n = FuncCall quote' [Variable n]
+    let paramParsers = zipWith literalParser paramNames (map Variable paramIdents)
 
     parseString ")"
     parseWS

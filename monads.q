@@ -3,14 +3,14 @@
         (if (starts-with s m)
             (apply c (gen-var) (drop (length m) s))
             (list)))
-        "parse-str" s c))
+        "parse-str" (eval s) (eval c)))
     pexp)))
 
 (run (set! parse-str (lambda (m s c) (apply (lambda (m s c)
     (if (starts-with s m)
         (apply c m (drop (length m) s))
         (list)))
-    m s c))))
+    (eval m) (eval s) (eval c)))))
 
 (run (set! pexp (cons
     (lambda (s c)
@@ -66,3 +66,4 @@
 (define x (+ 3 4))
 (define y x)
 (* x y)
+

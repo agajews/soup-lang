@@ -14,13 +14,13 @@ eval :: Value -> Eval Value
 eval x@(StringVal _) = return x
 eval x@(IntVal _) = return x
 eval x@(ListVal _) = return x
-eval x@(PrimFunc _) = return x
+eval x@(PrimFunc _ _) = return x
 eval x@(Lambda _ _) = return x
 eval (Variable n) = getVar n
 eval (FuncCall f args) = do
     f' <- eval f
     case f' of
-        PrimFunc f' -> f' args
+        PrimFunc _ f' -> f' args
         Lambda params body -> do
             matchArgs params args
             res <- eval body
