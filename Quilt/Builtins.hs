@@ -29,6 +29,8 @@ builtins = [function "+" $ intBinOp (+),
             function "starts-with" startsWith,
             function "length" lengthFun,
             function "drop" dropFun,
+            function "str->list" strToList,
+            function "list->str" listToStr,
             macro "set!" set,
             macro "if" ifFun,
             macro "apply" apply,
@@ -96,6 +98,17 @@ dropFun _ = throwError InvalidArguments
 lengthFun :: [Value] -> Eval Value
 lengthFun [ListVal l] = return $ IntVal $ toInteger $ length l
 lengthFun _ = throwError InvalidArguments
+
+strToList :: [Value] -> Eval Value
+strToList [StringVal s] = return $ ListVal $ map (StringVal . (:[])) s
+strToList _ = throwError InvalidArguments
+
+listToStr :: [Value] -> Eval Value
+listToStr v = listToStr' v >>= return . StringVal where
+    listToStr' [ListVal ((StringVal s) : rest)] = do
+        s' <- listToStr' [ListVal rest]
+        return $ s ++ s'
+    listToStr' _ = throwError InvalidArguments
 
 -- Macros
 
