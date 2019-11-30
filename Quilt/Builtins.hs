@@ -93,10 +93,15 @@ dropFun [IntVal n, ListVal l] = return $ ListVal $ drop' n l where
     drop' 0 l = l
     drop' n (x:xs) = drop' (n-1) xs
     drop' _ [] = []
+dropFun [IntVal n, StringVal s] = do
+    l <- strToList [StringVal s]
+    l' <- dropFun [IntVal n, l]
+    listToStr [l']
 dropFun _ = throwError InvalidArguments
 
 lengthFun :: [Value] -> Eval Value
 lengthFun [ListVal l] = return $ IntVal $ toInteger $ length l
+lengthFun [StringVal s] = return $ IntVal $ toInteger $ length s
 lengthFun _ = throwError InvalidArguments
 
 strToList :: [Value] -> Eval Value

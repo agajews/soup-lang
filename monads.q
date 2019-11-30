@@ -1,27 +1,23 @@
 (run (set! pexp (cons
-    (lambda (s c) (apply (lambda (m s c)
-        (if (starts-with s m)
-            (apply c
-                (gen-var "parse-str")
-                (list->str (drop
-                    (length (str->list m))
-                    (str->list s))))
-            (list)))
-        "parse-str" (eval s) (eval c)))
+    (apply (lambda (var m)
+        (lambda (s c) (apply (lambda (s c)
+            (if (starts-with s m)
+                (apply c var (drop (length m) s))
+                (list)))
+            (eval s) (eval c))))
+        (gen-var "parse-str") "parse-str")
     pexp)))
 
 (run (set! parse-str (lambda (m s c) (apply (lambda (m s c)
     (if (starts-with s m)
-        (apply c m (list->str (drop
-            (length (str->list m))
-            (str->list s))))
+        (apply c m (drop (length m) s))
         (list)))
     (eval m) (eval s) (eval c)))))
 
 (run (set! pexp (cons
-    (lambda (s c)
+    (apply (lambda (var) (lambda (s c)
         (parse-str "declare-var" (eval s) (lambda (_ s)
-        (apply (eval c) (gen-var "declare-var")) (eval s)))))
+        (apply (eval c) var (eval s)))))) (gen-var "declare-var"))
     pexp)))
 
 (set! define-var (lambda (name val) (apply (lambda (name) (apply (lambda (var) (do
@@ -46,7 +42,7 @@
 
 (run (define-var "parse-ident" (lambda (s c)
     (parse-while
-        (lambda (x) (or (is-alpha-num x) (elem (split-chars "~!@#$%^&*-=+_|'<>?") x)))
+        (lambda (x) (or (is-alpha-num x) (elem (str->list "~!@#$%^&*-=+_|'<>?") x)))
         (eval s)
         (lambda (name s) (apply (lambda (c name s)
             (if (all is-digit (split-chars name))

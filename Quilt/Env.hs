@@ -42,7 +42,7 @@ modifyVar n f = do
     v' <- f v
     setVar n v'
 
-deleteVar :: Value -> Eval ()
-deleteVar (Variable n) = do
+deleteVar :: Ident -> Eval ()
+deleteVar n = do
     Env m env <- get
     put $ Env m (Map.delete n env)

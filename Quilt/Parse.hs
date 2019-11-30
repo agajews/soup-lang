@@ -12,17 +12,18 @@ import Control.Monad.State
 
 import Debug.Trace
 
-extractParsing :: Value -> Eval [Value]
-extractParsing (ListVal l) = return l
-extractParsing _ = throwError InvalidRule
+extractParsing :: Value -> [Value] -> Value -> Eval [Value]
+extractParsing _ _ (ListVal l) = return l
+extractParsing r args _ = throwError $ InvalidRule r args
 
 evalRule :: Value -> [Value] -> Eval [Value]
-evalRule r args = eval (FuncCall r args) >>= extractParsing
+evalRule r args = eval (FuncCall r args) >>= extractParsing r args
 
 runRule :: Value -> String -> Value -> Eval [(Value, Env)]
-runRule f s r = do
+runRule c s r = do
+    -- traceShow ("trying", r) $ return ()
     startEnv <- get
-    ps <- evalRule r [StringVal s, f]
+    ps <- evalRule r [StringVal s, c]
     endEnv <- get
     put startEnv
     return $ map (\v -> (v, endEnv)) ps
@@ -37,16 +38,22 @@ extractRules (ListVal (x : rest)) = do
         y:ys -> (x:y):ys
         [] -> [[x]]
 extractRules (ListVal []) = return []
-extractRules _ = throwError InvalidType
+extractRules v = throwError $ InvalidType v
+
+firstMatch :: [Eval [(Value, Env)]] -> Eval [(Value, Env)]
+firstMatch (curr:rest) = do
+    ps <- curr
+    if null ps
+    then firstMatch rest
+    else return ps
+firstMatch [] = return []
 
 parse :: String -> [(Value, Value)] -> Eval [Value]
 parse s l = do
-    ends <- forM l $ \(rs, f) -> do
+    traceShow ("parsing at", s) $ return ()
+    ends <- forM l $ \(rs, c) -> do
         rules <- extractRules rs
-        ends <- liftM (map concat) $ (mapM . mapM) (runRule f s) rules
-        return $ case filter (not . null) ends of
-            e:_ -> e
-            [] -> []
+        firstMatch $ map (liftM concat . mapM (runRule c s)) rules
     case concat ends of
         [(v, env)] -> put env >> return [v]
         [] -> return []

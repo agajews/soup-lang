@@ -65,12 +65,13 @@ parserToVal name p = PrimFunc ("parser:" ++ name) $ \args -> do
         _ -> throwError $ InvalidArguments' name args
 
 contToVal :: String -> (Value -> String -> Eval [Value]) -> Value
-contToVal name c = PrimFunc ("cont:" ++ name) $ \args -> do
+contToVal name c = PrimFunc contname $ \args -> do
     case args of
         [v, StringVal s] -> do
             l <- c v s
             return $ ListVal l
-        _ -> throwError $ InvalidArguments' name args
+        _ -> throwError $ InvalidArguments' contname args
+    where contname = "cont:" ++ name
 
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do

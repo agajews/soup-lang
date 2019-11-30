@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Quilt.Bootstrap (
     initType,
 ) where
@@ -20,22 +22,22 @@ import Debug.Trace
 initType :: Eval Value
 initType = do
     pexpType <- genIdent "pexp"
-    let pexpFun = parserToVal "parser:pexp-name" $ pexpParser pexpType
-    let lambdaFun = parserToVal "parser:lambda" $ lambdaParser pexpType
-    let funcCallFun = parserToVal "parser:func-call" $ parseFuncCall pexpType
+    let pexpFun = parserToVal "name:pexp" $ pexpParser pexpType
+    let lambdaFun = parserToVal "lambda" $ lambdaParser pexpType
+    let funcCallFun = parserToVal "func-call" $ parseFuncCall pexpType
     let runFun = parserToVal "run" $ parseRun pexpType
 
     topType <- genIdent "top"
-    let topFun = parserToVal "top" $ topTypeParser topType
+    let topFun = parserToVal "name:top" $ topTypeParser topType
 
-    let intFun = parserToVal "parser:int" parseInt
-    let strFun = parserToVal "parser:str" parseStr
+    let intFun = parserToVal "int" parseInt
+    let strFun = parserToVal "str" parseStr
     let builtinParsers = map builtinParser builtins
 
     setVar pexpType $ ListVal $ [pexpFun, lambdaFun, funcCallFun, runFun, topFun, intFun, strFun] ++ builtinParsers
-    setVar topType $ ListVal [parserToVal "parser:pexp" $ parseType pexpType]
+    setVar topType $ ListVal [parserToVal "pexp" $ parseType pexpType]
 
-    return $ ListVal [parserToVal "parser:top" $ topParser topType]
+    return $ ListVal [parserToVal "top" $ topParser topType]
 
 pexpParser :: Ident -> Parser Value
 pexpParser n = parseString "pexp" >> return (Variable n)
@@ -71,18 +73,28 @@ lambdaParser pexp = do
     body <- parseType pexp
     liftEval $ modifyVar pexp popRules
 
+    -- traceShow body $ return ()
+
     parseString ")"
+
+    -- traceShow "got close parenthesis" $ return ()
 
     return $ Lambda paramIdents body
 
 pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
-pushRules names ps l@(ListVal _) = return $ ListVal $ (zipWith parserToVal names ps) ++ [l]
-pushRules _ _ _ = throwError InvalidRule
+pushRules names ps l@(ListVal _) = do
+    -- traceShow ("pushing", names, l) $ return ()
+    return $ ListVal $ (zipWith parserToVal names ps) ++ [l]
+pushRules _ _ v = throwError $ InvalidType v
 
 popRules :: Value -> Eval Value
-popRules (ListVal [ListVal l]) = return $ ListVal l
-popRules (ListVal (v:vs)) = popRules (ListVal vs)
-popRules _ = throwError InvalidRule
+popRules v = do
+    -- traceShow ("popping", v) $ return ()
+    popRules' v
+    where
+        popRules' (ListVal (x:y:ys)) = popRules' (ListVal (y:ys))
+        popRules' (ListVal [ListVal l]) = return $ ListVal l
+        popRules' v = throwError $ InvalidType v
 
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
@@ -110,7 +122,7 @@ parseInt = do
 parseStr :: Parser Value
 parseStr = do
     parseString "\""
-    s <- parseMany' $ parseIf (not . (== '\\')) <|> parseEscape
+    s <- parseMany' $ parseIf (not . (`elem` ['\\', '\"'])) <|> parseEscape
     parseString "\""
     return $ StringVal s
     where

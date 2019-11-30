@@ -19,11 +19,11 @@ import Data.List
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
                  | NotAFunction Value
-                 | TooFewArgs
-                 | TooManyArgs
-                 | InvalidRule
+                 | MismatchedArgs
+                 | MismatchedArgs' [Ident] [Value]
+                 | InvalidRule Value [Value]
                  | InvalidContinuation
-                 | InvalidType
+                 | InvalidType Value
                  | InvalidArguments
                  | InvalidArguments' String [Value]
                  | ParsingError
@@ -66,7 +66,7 @@ instance Show Value where
     show (ListVal l) = if null l
         then "(list)"
         else "(list " ++ intercalate " " (map show l) ++ ")"
-    show (PrimFunc name _) = "prim:" ++ name
+    show (PrimFunc name _) = name
     show (Lambda ps b) = "lambda"
     show (Variable (Ident name x)) = "var:" ++ name ++ ":" ++ show x
     show (FuncCall v args) = if null args

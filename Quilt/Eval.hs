@@ -22,14 +22,14 @@ eval (FuncCall f args) = do
     case f' of
         PrimFunc _ f' -> f' args
         Lambda params body -> do
-            matchArgs params args
+            catchError (matchArgs params args) $ \err -> case err of
+                MismatchedArgs -> throwError $ MismatchedArgs' params args
             res <- eval body
-            mapM (deleteVar . Variable) params
             return res
         _ -> throwError $ NotAFunction f'
 
 matchArgs :: [Ident] -> [Value] -> Eval ()
 matchArgs (n:ns) (v:vs) = setVar n v >> matchArgs ns vs
 matchArgs [] [] = return ()
-matchArgs _ [] = throwError TooFewArgs
-matchArgs [] _ = throwError TooManyArgs
+matchArgs _ [] = throwError MismatchedArgs
+matchArgs [] _ = throwError MismatchedArgs
