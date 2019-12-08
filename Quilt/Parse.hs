@@ -5,6 +5,7 @@ module Quilt.Parse (
 ) where
 
 import Quilt.Value
+import Quilt.Env
 import Quilt.Eval
 
 import Control.Monad.Except
@@ -22,10 +23,10 @@ evalRule r args = eval (FuncCall r args) >>= extractParsing r args
 runRule :: Value -> String -> Value -> Eval [(Value, Env)]
 runRule c s r = do
     traceShow ("trying", r) $ return ()
-    startEnv <- get
+    startEnv <- getEnv
     ps <- evalRule r [StringVal s, c]
-    endEnv <- get
-    put startEnv
+    endEnv <- getEnv
+    putEnv startEnv
     return $ map (\v -> (v, endEnv)) ps
 
 extractRules :: Value -> Eval [[Value]]
@@ -55,6 +56,6 @@ parse s l = do
         rules <- extractRules rs
         firstMatch $ map (liftM concat . mapM (runRule c s)) rules
     case concat ends of
-        [(v, env)] -> put env >> return [v]
+        [(v, env)] -> putEnv env >> return [v]
         [] -> return []
         e -> throwError $ AmbiguousParsing (map fst e)

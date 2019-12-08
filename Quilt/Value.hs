@@ -6,6 +6,8 @@ module Quilt.Value (
     Eval(..),
     Env(..),
     InterpError(..),
+    DebugTree(..),
+    emptyTree,
     runEval,
 ) where
 
@@ -47,15 +49,20 @@ data Value = StringVal String
            | Variable Ident
            | FuncCall Value [Value]
 
-newtype Eval a = Eval { unwrapEval :: StateT Env (ExceptT InterpError Identity) a }
+newtype Eval a = Eval { unwrapEval :: StateT (Env, DebugTree) (ExceptT InterpError Identity) a }
     deriving (Functor,
               Applicative,
               Monad,
               MonadError InterpError,
-              MonadState Env)
+              MonadState (Env, DebugTree))
 
-runEval :: Env -> Eval a -> Either InterpError (a, Env)
-runEval env x = runIdentity (runExceptT (runStateT (unwrapEval x) env))
+data DebugTree = DebugTree String String [DebugTree]
+
+emptyTree :: String -> String -> DebugTree
+emptyTree root program = DebugTree root program []
+
+runEval :: (Env, DebugTree) -> Eval a -> Either InterpError (a, (Env, DebugTree))
+runEval (env, debugTree) x = runIdentity (runExceptT (runStateT (unwrapEval x) (env, debugTree)))
 
 data Env = Env Integer (Map.Map Ident Value)
     deriving (Show)

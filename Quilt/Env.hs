@@ -6,6 +6,8 @@ module Quilt.Env (
     modifyVar,
     setVar,
     deleteVar,
+    getEnv,
+    putEnv,
 ) where
 
 import Quilt.Value
@@ -19,22 +21,22 @@ emptyEnv = Env 0 Map.empty
 
 genIdent :: String -> Eval Ident
 genIdent name = do
-    Env n env <- get
+    Env n env <- getEnv
     let n' = n + 1
-    put $ Env n' env
+    putEnv $ Env n' env
     return $ Ident name n'
 
 getVar :: Ident -> Eval Value
 getVar n = do
-    Env _ env <- get
+    Env _ env <- getEnv
     case Map.lookup n env of
         Just v -> return v
         Nothing -> throwError (UnboundVariable n)
 
 setVar :: Ident -> Value -> Eval ()
 setVar n v = do
-    Env m env <- get
-    put $ Env m (Map.insert n v env)
+    Env m env <- getEnv
+    putEnv $ Env m (Map.insert n v env)
 
 modifyVar :: Ident -> (Value -> Eval Value) -> Eval ()
 modifyVar n f = do
@@ -44,5 +46,13 @@ modifyVar n f = do
 
 deleteVar :: Ident -> Eval ()
 deleteVar n = do
-    Env m env <- get
-    put $ Env m (Map.delete n env)
+    Env m env <- getEnv
+    putEnv $ Env m (Map.delete n env)
+
+getEnv :: Eval Env
+getEnv = get >>= return . fst
+
+putEnv :: Env -> Eval ()
+putEnv env = do
+    (_, debugTree) <- get
+    put (env, debugTree)
