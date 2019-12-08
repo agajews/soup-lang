@@ -80,6 +80,7 @@ parseType n = Parser $ \s c -> do
 
 parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s
+    -- then traceShow ("parsed", m) $ c () $ drop (length m) s
     then c () $ drop (length m) s
     else return []
 

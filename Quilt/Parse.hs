@@ -21,7 +21,7 @@ evalRule r args = eval (FuncCall r args) >>= extractParsing r args
 
 runRule :: Value -> String -> Value -> Eval [(Value, Env)]
 runRule c s r = do
-    -- traceShow ("trying", r) $ return ()
+    traceShow ("trying", r) $ return ()
     startEnv <- get
     ps <- evalRule r [StringVal s, c]
     endEnv <- get
@@ -50,7 +50,7 @@ firstMatch [] = return []
 
 parse :: String -> [(Value, Value)] -> Eval [Value]
 parse s l = do
-    traceShow ("parsing at", s) $ return ()
+    traceShow ("words left:", length $ words s, take 10 $ words s) $ return ()
     ends <- forM l $ \(rs, c) -> do
         rules <- extractRules rs
         firstMatch $ map (liftM concat . mapM (runRule c s)) rules

@@ -20,13 +20,13 @@
         (apply (eval c) var (eval s)))))) (gen-var "declare-var"))
     pexp)))
 
-(set! define-var (lambda (name val) (apply (lambda (name) (apply (lambda (var) (do
+(run (set! define-var (lambda (name val) (apply (lambda (name) (apply (lambda (var) (do
     (set! pexp (cons
         (lambda (s c)
             (parse-str (eval name) (eval s) (lambda (_ s)
             (apply (eval c) var (eval s)))))
         pexp))
-    (set! (eval var) val))) (gen-var name))) name)))
+    (set! (eval var) val))) (gen-var name))) name))))
 
 (run (define-var "prepend!" (lambda (l x)
     (apply set! l (cons x (eval l))))))

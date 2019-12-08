@@ -53,7 +53,8 @@ topParser topType = do
     return $ ListVal vals
 
 literalParser :: String -> Value -> Parser Value
-literalParser s v = parseString s >> return v
+-- literalParser s v = parseString s >> return v
+literalParser s v = parseString s >> traceShow s (return v)
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
