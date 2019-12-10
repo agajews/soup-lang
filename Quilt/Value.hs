@@ -7,7 +7,8 @@ module Quilt.Value (
     Env(..),
     InterpError(..),
     DebugTree(..),
-    emptyTree,
+    Tree(..),
+    Zipper(..),
     runEval,
 ) where
 
@@ -28,6 +29,8 @@ data InterpError = UnboundVariable Ident
                  | InvalidType Value
                  | InvalidArguments
                  | InvalidArguments' String [Value]
+                 | InvalidPushTree
+                 | InvalidPopTree
                  | ParsingError
                  | AmbiguousParsing [Value]
     deriving (Show)
@@ -56,10 +59,11 @@ newtype Eval a = Eval { unwrapEval :: StateT (Env, DebugTree) (ExceptT InterpErr
               MonadError InterpError,
               MonadState (Env, DebugTree))
 
-data DebugTree = DebugTree String String [DebugTree]
+data Tree a = Tree a [Tree a]
 
-emptyTree :: String -> String -> DebugTree
-emptyTree root program = DebugTree root program []
+data Zipper a = Zipper (Maybe a) (Maybe (Zipper a)) [Tree a]
+
+type DebugTree = Zipper (String, String)
 
 runEval :: (Env, DebugTree) -> Eval a -> Either InterpError (a, (Env, DebugTree))
 runEval (env, debugTree) x = runIdentity (runExceptT (runStateT (unwrapEval x) (env, debugTree)))

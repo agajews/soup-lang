@@ -8,6 +8,7 @@ import Quilt.Env
 import Quilt.Eval
 import Quilt.Parse
 import Quilt.Parser
+import Quilt.Debugger
 import Quilt.Bootstrap
 
 import Control.Monad.Except
@@ -15,7 +16,7 @@ import System.IO
 
 parseStr' :: String -> Either InterpError ([Value], (Env, DebugTree))
 parseStr' s = do
-    parsing <- runEval (emptyEnv, emptyTree "parse-root" s) $ do
+    parsing <- runEval (emptyEnv, emptyTree ("parse-root", s)) $ do
         t <- initType
         parse s [(t, contToVal "final-continuation" finalContinuation)]
     case parsing of
@@ -34,7 +35,7 @@ parseStr = liftM fst . parseStr'
 runStr :: String -> Either InterpError Value
 runStr s = do
     (exprs, (env, tree)) <- parseStr' s
-    (vals, _) <- runEval (env, emptyTree "run-root" "") $ mapM eval exprs
+    (vals, _) <- runEval (env, emptyTree ("run-root", "")) $ mapM eval exprs
     return $ last vals
 
 parseFile :: String -> IO (Either InterpError [Value])
