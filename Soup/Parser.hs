@@ -125,6 +125,6 @@ parseInterspersed' :: (Show a) => Parser a -> Parser b -> Parser [a]
 parseInterspersed' p sep = catchFail (return []) (parseInterspersed p sep)
 
 logDebug :: String -> Parser ()
-logDebug name = Parser $ \s c -> do
+logDebug name = traceShow name $ Parser $ \s c -> do
     logParser s name
     c () s

@@ -17,13 +17,21 @@ import Control.Monad.State
 
 import System.IO
 
-runEval :: (Env, DebugZipper) -> Eval a ->  Either (InterpError, DebugTree) (a, Env)
+runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
     (Right x, (env, debugZip))  -> Right (x, env)
     (Left err, (env, debugZip)) -> Left (err, rootTree debugZip)
     where
         unwrapped = runIdentity (runStateT (runExceptT (unwrapEval x))
                                            (initEnv, initDebug))
+
+showDebugTree t@(Tree (_, program) _) = showEntry 0 t where
+    showEntry k (Tree (n, p) children) =
+        indent k ++ n ++ " (" ++ (show $ lineno p) ++ ")\n" ++
+        (concat $ map (showEntry $ k + 1) children)
+    indent k = concat $ replicate k "| "
+    lineno p = nlines program - nlines p + 1
+    nlines = length . lines
 
 parseStr' :: String -> Either (InterpError, DebugTree) ([Value], Env)
 parseStr' s = runEval (emptyEnv, emptyTree ("parse-root", s)) $ do
@@ -53,4 +61,7 @@ parseFile fname = do
     file <- readFile fname
     case parseStr file of
         Right vals       -> print vals
-        Left (err, tree) -> putStrLn "=== DEBUG OUTPUT ===" >> print tree
+        Left (err, tree) -> do
+            putStrLn $ "Error: " ++ show err
+            putStrLn "=== DEBUG OUTPUT ==="
+            putStrLn $ showDebugTree tree

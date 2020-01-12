@@ -31,8 +31,8 @@ data InterpError = UnboundVariable Ident
                  | InvalidType Value
                  | InvalidArguments
                  | InvalidArguments' String [Value]
-                 | InvalidPushTree
-                 | InvalidPopTree
+                 | InvalidPushTree DebugZipper
+                 | InvalidPopTree DebugZipper
                  | ParsingError
                  | AmbiguousParsing [Value]
     deriving (Show)
@@ -64,24 +64,17 @@ newtype Eval a = Eval {
 
 -- (data at current node) (children)
 data Tree a = Tree a [Tree a]
+    deriving (Show)
 
 -- (data at current node) (parent, whose children exclude this node) (children)
 data Zipper a = Zipper (Maybe a) (Maybe (Zipper a)) [Tree a]
+    deriving (Show)
 
 type DebugZipper = Zipper (String, String)
 type DebugTree = Tree (String, String)
 
 data Env = Env Integer (Map.Map Ident Value)
     deriving (Show)
-
-instance Show DebugTree where
-    show t@(Tree (_, program) _) = showEntry 0 t where
-        showEntry k (Tree (n, p) children) =
-            indent k ++ n ++ " (" ++ (show $ lineno p) ++ ")\n" ++
-            (concat $ map (showEntry $ k + 1) children)
-        indent k = concat $ replicate k "| "
-        lineno p = nlines program - nlines p + 1
-        nlines = length . lines
 
 instance Show Value where
     show (StringVal x) = show x

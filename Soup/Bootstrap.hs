@@ -47,10 +47,10 @@ initType = do
     return $ ListVal [parserToVal "top" $ topParser topType]
 
 pexpParser :: Ident -> Parser Value
-pexpParser n = parseString "pexp" >> return (Variable n)
+pexpParser n = literalParser "pexp" $ Variable n
 
 topTypeParser :: Ident -> Parser Value
-topTypeParser n = parseString "top" >> return (Variable n)
+topTypeParser n = literalParser "top" $ Variable n
 
 topParser :: Ident -> Parser Value
 topParser topType = do
@@ -106,6 +106,7 @@ popRules v = do
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
     parseString "("
+    logDebug "func-call"
     fun <- parseType pexp
     args <- catchFail (return []) $ do
         parseWS
