@@ -1,8 +1,8 @@
-module Quilt.Debugger (
+module Soup.Debugger (
     emptyTree,
 ) where
 
-import Quilt.Value
+import Soup.Value
 
 import Control.Monad.State
 import Control.Monad.Except

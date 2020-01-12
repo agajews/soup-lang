@@ -1,15 +1,15 @@
-module Quilt.Run (
+module Soup.Run (
     parseStr,
     runStr,
 ) where
 
-import Quilt.Value
-import Quilt.Env
-import Quilt.Eval
-import Quilt.Parse
-import Quilt.Parser
-import Quilt.Debugger
-import Quilt.Bootstrap
+import Soup.Value
+import Soup.Env
+import Soup.Eval
+import Soup.Parse
+import Soup.Parser
+import Soup.Debugger
+import Soup.Bootstrap
 
 import Control.Monad.Except
 import System.IO
@@ -31,7 +31,7 @@ finalContinuation v s = return $ case s of
 
 parseStr :: String -> Either InterpError [Value]
 parseStr = liftM fst . parseStr'
-    
+
 runStr :: String -> Either InterpError Value
 runStr s = do
     (exprs, (env, tree)) <- parseStr' s

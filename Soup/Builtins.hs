@@ -1,14 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Quilt.Builtins (
+module Soup.Builtins (
     builtins,
 ) where
 
-import Quilt.Value
-import Quilt.Env
-import Quilt.Eval
-import Quilt.Parse
-import Quilt.Parser
+import Soup.Value
+import Soup.Env
+import Soup.Eval
+import Soup.Parse
+import Soup.Parser
 
 import Control.Monad.Except
 

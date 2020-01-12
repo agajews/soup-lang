@@ -1,15 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Quilt.Bootstrap (
+module Soup.Bootstrap (
     initType,
 ) where
 
-import Quilt.Value
-import Quilt.Env
-import Quilt.Eval
-import Quilt.Parse
-import Quilt.Parser
-import Quilt.Builtins
+import Soup.Value
+import Soup.Env
+import Soup.Eval
+import Soup.Parse
+import Soup.Parser
+import Soup.Builtins
 
 import Control.Applicative
 import Control.Monad.Except
@@ -54,7 +54,7 @@ topParser topType = do
 
 literalParser :: String -> Value -> Parser Value
 -- literalParser s v = parseString s >> return v
-literalParser s v = parseString s >> traceShow s (return v)
+literalParser s v = parseString s >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do

@@ -1,10 +1,10 @@
-module Quilt.Eval (
+module Soup.Eval (
     InterpError(..),
     eval,
 ) where
 
-import Quilt.Value
-import Quilt.Env
+import Soup.Value
+import Soup.Env
 
 import Control.Monad.Identity
 import Control.Monad.Except

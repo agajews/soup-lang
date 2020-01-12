@@ -1,4 +1,4 @@
-module Quilt.Parser (
+module Soup.Parser (
     Parser(..),
     parserToVal,
     contToVal,
@@ -15,9 +15,9 @@ module Quilt.Parser (
     parseInterspersed',
 ) where
 
-import Quilt.Value
-import Quilt.Eval
-import Quilt.Parse
+import Soup.Value
+import Soup.Eval
+import Soup.Parse
 
 import Control.Monad.Except
 import Control.Monad.State

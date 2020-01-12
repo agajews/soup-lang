@@ -1,4 +1,4 @@
-module Quilt.Env (
+module Soup.Env (
     Env,
     emptyEnv,
     genIdent,
@@ -10,7 +10,7 @@ module Quilt.Env (
     putEnv,
 ) where
 
-import Quilt.Value
+import Soup.Value
 
 import Control.Monad.Except
 import Control.Monad.State

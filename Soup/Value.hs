@@ -1,6 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Quilt.Value (
+module Soup.Value (
     Ident(..),
     Value(..),
     Eval(..),

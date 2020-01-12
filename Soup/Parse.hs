@@ -1,12 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Quilt.Parse (
+module Soup.Parse (
     parse,
 ) where
 
-import Quilt.Value
-import Quilt.Env
-import Quilt.Eval
+import Soup.Value
+import Soup.Env
+import Soup.Eval
 
 import Control.Monad.Except
 import Control.Monad.State
@@ -22,7 +22,7 @@ evalRule r args = eval (FuncCall r args) >>= extractParsing r args
 
 runRule :: Value -> String -> Value -> Eval [(Value, Env)]
 runRule c s r = do
-    traceShow ("trying", r) $ return ()
+    -- traceShow ("trying", r) $ return ()
     startEnv <- getEnv
     ps <- evalRule r [StringVal s, c]
     endEnv <- getEnv
@@ -51,7 +51,7 @@ firstMatch [] = return []
 
 parse :: String -> [(Value, Value)] -> Eval [Value]
 parse s l = do
-    traceShow ("words left:", length $ words s, take 10 $ words s) $ return ()
+    -- traceShow ("words left:", length $ words s, take 10 $ words s) $ return ()
     ends <- forM l $ \(rs, c) -> do
         rules <- extractRules rs
         firstMatch $ map (liftM concat . mapM (runRule c s)) rules
