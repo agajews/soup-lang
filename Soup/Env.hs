@@ -30,7 +30,7 @@ getVar :: Ident -> Eval Value
 getVar n = do
     Env _ env <- getEnv
     case Map.lookup n env of
-        Just v -> return v
+        Just v  -> return v
         Nothing -> throwError (UnboundVariable n)
 
 setVar :: Ident -> Value -> Eval ()

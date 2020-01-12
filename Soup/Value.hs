@@ -1,4 +1,6 @@
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeSynonymInstances       #-}
 
 module Soup.Value (
     Ident(..),
@@ -7,17 +9,17 @@ module Soup.Value (
     Env(..),
     InterpError(..),
     DebugTree(..),
+    DebugZipper(..),
     Tree(..),
     Zipper(..),
-    runEval,
 ) where
 
-import Control.Monad.Identity
 import Control.Monad.Except
+import Control.Monad.Identity
 import Control.Monad.State
 
-import qualified Data.Map as Map
 import Data.List
+import qualified Data.Map as Map
 
 data InterpError = UnboundVariable Ident
                  | NotAVariable Value
@@ -52,24 +54,34 @@ data Value = StringVal String
            | Variable Ident
            | FuncCall Value [Value]
 
-newtype Eval a = Eval { unwrapEval :: StateT (Env, DebugTree) (ExceptT InterpError Identity) a }
-    deriving (Functor,
-              Applicative,
-              Monad,
-              MonadError InterpError,
-              MonadState (Env, DebugTree))
+newtype Eval a = Eval {
+    unwrapEval :: ExceptT InterpError (StateT (Env, DebugZipper) Identity) a
+} deriving (Functor,
+            Applicative,
+            Monad,
+            MonadError InterpError,
+            MonadState (Env, DebugZipper))
 
+-- (data at current node) (children)
 data Tree a = Tree a [Tree a]
 
+-- (data at current node) (parent, whose children exclude this node) (children)
 data Zipper a = Zipper (Maybe a) (Maybe (Zipper a)) [Tree a]
 
-type DebugTree = Zipper (String, String)
-
-runEval :: (Env, DebugTree) -> Eval a -> Either InterpError (a, (Env, DebugTree))
-runEval (env, debugTree) x = runIdentity (runExceptT (runStateT (unwrapEval x) (env, debugTree)))
+type DebugZipper = Zipper (String, String)
+type DebugTree = Tree (String, String)
 
 data Env = Env Integer (Map.Map Ident Value)
     deriving (Show)
+
+instance Show DebugTree where
+    show t@(Tree (_, program) _) = showEntry 0 t where
+        showEntry k (Tree (n, p) children) =
+            indent k ++ n ++ " (" ++ (show $ lineno p) ++ ")\n" ++
+            (concat $ map (showEntry $ k + 1) children)
+        indent k = concat $ replicate k "| "
+        lineno p = nlines program - nlines p + 1
+        nlines = length . lines
 
 instance Show Value where
     show (StringVal x) = show x

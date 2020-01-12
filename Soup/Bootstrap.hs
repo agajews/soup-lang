@@ -4,12 +4,12 @@ module Soup.Bootstrap (
     initType,
 ) where
 
-import Soup.Value
+import Soup.Builtins
 import Soup.Env
 import Soup.Eval
 import Soup.Parse
 import Soup.Parser
-import Soup.Builtins
+import Soup.Value
 
 import Control.Applicative
 import Control.Monad.Except
@@ -34,7 +34,14 @@ initType = do
     let strFun = parserToVal "str" parseStr
     let builtinParsers = map builtinParser builtins
 
-    setVar pexpType $ ListVal $ [pexpFun, lambdaFun, funcCallFun, runFun, topFun, intFun, strFun] ++ builtinParsers
+    setVar pexpType $ ListVal $ [
+        pexpFun,
+        lambdaFun,
+        funcCallFun,
+        runFun,
+        topFun,
+        intFun,
+        strFun] ++ builtinParsers
     setVar topType $ ListVal [parserToVal "pexp" $ parseType pexpType]
 
     return $ ListVal [parserToVal "top" $ topParser topType]
@@ -53,8 +60,7 @@ topParser topType = do
     return $ ListVal vals
 
 literalParser :: String -> Value -> Parser Value
--- literalParser s v = parseString s >> return v
-literalParser s v = parseString s >> return v
+literalParser s v = parseString s >> logDebug s >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
@@ -93,9 +99,9 @@ popRules v = do
     -- traceShow ("popping", v) $ return ()
     popRules' v
     where
-        popRules' (ListVal (x:y:ys)) = popRules' (ListVal (y:ys))
+        popRules' (ListVal (x:y:ys))    = popRules' (ListVal (y:ys))
         popRules' (ListVal [ListVal l]) = return $ ListVal l
-        popRules' v = throwError $ InvalidType v
+        popRules' v                     = throwError $ InvalidType v
 
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
@@ -138,7 +144,7 @@ isWhitespace :: Char -> Bool
 isWhitespace = (`elem` [' ', '\n', '\t'])
 
 parseWS :: Parser String
-parseWS = parseWhile isWhitespace 
+parseWS = parseWhile isWhitespace
 
 parseWS' :: Parser String
 parseWS' = parseWhile' isWhitespace

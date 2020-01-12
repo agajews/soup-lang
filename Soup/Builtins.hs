@@ -4,11 +4,11 @@ module Soup.Builtins (
     builtins,
 ) where
 
-import Soup.Value
 import Soup.Env
 import Soup.Eval
 import Soup.Parse
 import Soup.Parser
+import Soup.Value
 
 import Control.Monad.Except
 
@@ -46,17 +46,17 @@ macro name f = (name, PrimFunc name $ \args -> wrapInvalidArgs f name args)
 wrapInvalidArgs :: ([Value] -> Eval Value) -> String -> [Value] -> Eval Value
 wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of
     InvalidArguments -> throwError $ InvalidArguments' name args
-    _ -> throwError err
+    _                -> throwError err
 
 -- Functions
 
 intBinOp :: (Integer -> Integer -> Integer) -> [Value] -> Eval Value
 intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
-intBinOp _ _ = throwError $ InvalidArguments
+intBinOp _ _                     = throwError $ InvalidArguments
 
 genVar :: [Value] -> Eval Value
 genVar [StringVal name] = genIdent name >>= return . Variable
-genVar _ = throwError InvalidArguments
+genVar _                = throwError InvalidArguments
 
 parseFun :: [Value] -> Eval Value
 parseFun [StringVal s, ListVal l] = do
@@ -64,23 +64,23 @@ parseFun [StringVal s, ListVal l] = do
     parsings <- parse s tuples
     return $ ListVal parsings
     where getTuples (FuncCall x [y]) = return (x, y)
-          getTuples _ = throwError InvalidArguments
+          getTuples _                = throwError InvalidArguments
 parseFun _ = throwError InvalidArguments
 
 doFun :: [Value] -> Eval Value
 doFun args@(x:_) = return $ last args
-doFun _ = throwError InvalidArguments
+doFun _          = throwError InvalidArguments
 
 cons :: [Value] -> Eval Value
 cons [v, ListVal l] = return $ ListVal (v:l)
-cons _ = throwError InvalidArguments
+cons _              = throwError InvalidArguments
 
 list :: [Value] -> Eval Value
 list args = return $ ListVal args
 
 evalFun :: [Value] -> Eval Value
 evalFun [v] = eval v
-evalFun _ = throwError InvalidArguments
+evalFun _   = throwError InvalidArguments
 
 startsWith :: [Value] -> Eval Value
 startsWith [StringVal s, StringVal m] = return $ if isPrefixOf m s
@@ -90,9 +90,9 @@ startsWith _ = throwError InvalidArguments
 
 dropFun :: [Value] -> Eval Value
 dropFun [IntVal n, ListVal l] = return $ ListVal $ drop' n l where
-    drop' 0 l = l
+    drop' 0 l      = l
     drop' n (x:xs) = drop' (n-1) xs
-    drop' _ [] = []
+    drop' _ []     = []
 dropFun [IntVal n, StringVal s] = do
     l <- strToList [StringVal s]
     l' <- dropFun [IntVal n, l]
@@ -100,13 +100,13 @@ dropFun [IntVal n, StringVal s] = do
 dropFun _ = throwError InvalidArguments
 
 lengthFun :: [Value] -> Eval Value
-lengthFun [ListVal l] = return $ IntVal $ toInteger $ length l
+lengthFun [ListVal l]   = return $ IntVal $ toInteger $ length l
 lengthFun [StringVal s] = return $ IntVal $ toInteger $ length s
-lengthFun _ = throwError InvalidArguments
+lengthFun _             = throwError InvalidArguments
 
 strToList :: [Value] -> Eval Value
 strToList [StringVal s] = return $ ListVal $ map (StringVal . (:[])) s
-strToList _ = throwError InvalidArguments
+strToList _             = throwError InvalidArguments
 
 listToStr :: [Value] -> Eval Value
 listToStr v = listToStr' v >>= return . StringVal where
@@ -130,7 +130,7 @@ ifFun [cond, thenExpr, elseExpr] = do
     b <- eval cond
     case b of
         ListVal [] -> eval elseExpr
-        _ -> eval thenExpr
+        _          -> eval thenExpr
 
 apply :: [Value] -> Eval Value
 apply (f:args) = do
@@ -139,5 +139,4 @@ apply (f:args) = do
 
 quote :: [Value] -> Eval Value
 quote [v] = return v
-quote _ = throwError InvalidArguments
-
+quote _   = throwError InvalidArguments

@@ -13,15 +13,17 @@ module Soup.Parser (
     parseMany',
     parseInterspersed,
     parseInterspersed',
+    logDebug,
 ) where
 
-import Soup.Value
+import Soup.Debugger
 import Soup.Eval
 import Soup.Parse
+import Soup.Value
 
+import Control.Applicative
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Applicative
 
 import Data.List
 
@@ -60,7 +62,7 @@ parserToVal name p = PrimFunc ("parser:" ++ name) $ \args -> do
                 y <- eval $ FuncCall c [v, StringVal s']
                 case y of
                     ListVal l' -> return l'
-                    _ -> throwError InvalidContinuation
+                    _          -> throwError InvalidContinuation
             return $ ListVal l
         _ -> throwError $ InvalidArguments' name args
 
@@ -80,14 +82,13 @@ parseType n = Parser $ \s c -> do
 
 parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s
-    -- then traceShow ("parsed", m) $ c () $ drop (length m) s
     then c () $ drop (length m) s
     else return []
 
 parseIf :: (Char -> Bool) -> Parser Char
 parseIf p = Parser $ \s c -> case s of
     x:s' -> if p x then c x s' else return []
-    _ -> return []
+    _    -> return []
 
 parseWhile' :: (Char -> Bool) -> Parser String
 parseWhile' p = Parser $ \s c -> case span p s of
@@ -122,3 +123,8 @@ parseInterspersed p sep = do
 
 parseInterspersed' :: (Show a) => Parser a -> Parser b -> Parser [a]
 parseInterspersed' p sep = catchFail (return []) (parseInterspersed p sep)
+
+logDebug :: String -> Parser ()
+logDebug name = Parser $ \s c -> do
+    logParser s name
+    c () s

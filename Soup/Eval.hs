@@ -3,11 +3,11 @@ module Soup.Eval (
     eval,
 ) where
 
-import Soup.Value
 import Soup.Env
+import Soup.Value
 
-import Control.Monad.Identity
 import Control.Monad.Except
+import Control.Monad.Identity
 import Control.Monad.State
 
 eval :: Value -> Eval Value
@@ -30,6 +30,6 @@ eval (FuncCall f args) = do
 
 matchArgs :: [Ident] -> [Value] -> Eval ()
 matchArgs (n:ns) (v:vs) = setVar n v >> matchArgs ns vs
-matchArgs [] [] = return ()
-matchArgs _ [] = throwError MismatchedArgs
-matchArgs [] _ = throwError MismatchedArgs
+matchArgs [] []         = return ()
+matchArgs _ []          = throwError MismatchedArgs
+matchArgs [] _          = throwError MismatchedArgs
