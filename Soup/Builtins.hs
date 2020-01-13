@@ -22,11 +22,15 @@ builtins = [function "+" $ intBinOp (+),
             function "gen-var" genVar,
             function "do" doFun,
             function "cons" cons,
+            function "head" listHead,
+            function "tail" listTail,
             function "list" list,
             function "eval" evalFun,
             function "starts-with" startsWith,
             function "length" lengthFun,
             function "cat" cat,
+            function "span" spanFun,
+            function "empty-str" emptyStr,
             function "drop" dropFun,
             function "str->list" strToList,
             function "list->str" listToStr,
@@ -83,8 +87,36 @@ cat :: [Value] -> Eval Value
 cat [StringVal x, StringVal y] = return $ StringVal $ x ++ y
 cat _                          = throwError InvalidArguments
 
+spanFun :: [Value] -> Eval Value
+spanFun [predicate, StringVal s] = do
+    (match, rest) <- span' s
+    return $ ListVal [StringVal match, StringVal rest]
+    where
+        span' (x:xs) = do
+            b <- eval $ FuncCall predicate [StringVal [x]]
+            case b of
+                ListVal [] -> return ("", x:xs)
+                _ -> do
+                    (match, rest) <- span' xs
+                    return (x:match, rest)
+        span' "" = return ("", "")
+spanFun _ = throwError InvalidArguments
+
+emptyStr :: [Value] -> Eval Value
+emptyStr [StringVal ""] = return $ ListVal []
+emptyStr [StringVal s]  = return $ StringVal s
+emptyStr _              = throwError InvalidArguments
+
 list :: [Value] -> Eval Value
 list args = return $ ListVal args
+
+listHead :: [Value] -> Eval Value
+listHead [ListVal (x:_)] = return x
+listHead _               = throwError InvalidArguments
+
+listTail :: [Value] -> Eval Value
+listTail [ListVal (_:xs)] = return $ ListVal xs
+listTail _                = throwError InvalidArguments
 
 evalFun :: [Value] -> Eval Value
 evalFun [v] = eval v

@@ -37,3 +37,9 @@
 (run (define-var "prepend!" (lambda (l x)
     (apply set! l (cons x (eval l))))))
 
+(run (define-var "parse-while" (lambda (pred s c) (apply (lambda (l)
+    (if (empty-str (head l))
+        (list)
+        (apply (eval c) (head l) (head (tail l)))))
+    (span (eval pred) (eval s))))))
+
