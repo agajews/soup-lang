@@ -40,6 +40,9 @@ data InterpError = UnboundVariable Ident
 data Ident = Ident String Integer
     deriving (Show)
 
+identName :: Ident -> String
+identName (Ident name _) = name
+
 instance Eq Ident where
     (Ident _ x) == (Ident _ y) = x == y
 
@@ -80,11 +83,11 @@ instance Show Value where
     show (StringVal x) = show x
     show (IntVal x) = show x
     show (ListVal l) = if null l
-        then "(list)"
-        else "(list " ++ intercalate " " (map show l) ++ ")"
+        then "[]"
+        else "[" ++ intercalate " " (map show l) ++ "]"
     show (PrimFunc name _) = name
-    show (Lambda ps b) = "lambda"
-    show (Variable (Ident name x)) = "var:" ++ name ++ ":" ++ show x
+    show (Lambda ps b) = "(/\\ " ++ intercalate " " (map identName ps) ++ show b ++ ")"
+    show (Variable (Ident name x)) = "'" ++ name
     show (FuncCall v args) = if null args
         then "(" ++ show v ++ ")"
         else "(" ++ show v ++ " " ++ intercalate " " (map show args) ++ ")"

@@ -78,7 +78,7 @@ debugFile fname = do
     file <- readFile fname
     case parseStr' file of
         Right (vals, tree, env) -> do
-            print vals
+            print (ListVal vals)
             showTree tree
         Left (err, tree) -> do
             putStrLn $ "Error: " ++ show err

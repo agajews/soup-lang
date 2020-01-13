@@ -4,6 +4,7 @@ module Soup.Builtins (
     builtins,
 ) where
 
+import Soup.Debugger
 import Soup.Env
 import Soup.Eval
 import Soup.Parse
@@ -28,9 +29,11 @@ builtins = [function "+" $ intBinOp (+),
             function "eval" evalFun,
             function "starts-with" startsWith,
             function "length" lengthFun,
+            function "cat" cat,
             function "drop" dropFun,
             function "str->list" strToList,
             function "list->str" listToStr,
+            function "log-parser" logParserFun,
             macro "set!" set,
             macro "if" ifFun,
             macro "apply" apply,
@@ -50,9 +53,13 @@ wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of
 
 -- Functions
 
+logParserFun :: [Value] -> Eval Value
+logParserFun [StringVal n, StringVal p] = logParser n p >> (return $ ListVal [])
+logParserFun _ = throwError InvalidArguments
+
 intBinOp :: (Integer -> Integer -> Integer) -> [Value] -> Eval Value
 intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
-intBinOp _ _                     = throwError $ InvalidArguments
+intBinOp _ _                     = throwError InvalidArguments
 
 genVar :: [Value] -> Eval Value
 genVar [StringVal name] = genIdent name >>= return . Variable
@@ -74,6 +81,10 @@ doFun _          = throwError InvalidArguments
 cons :: [Value] -> Eval Value
 cons [v, ListVal l] = return $ ListVal (v:l)
 cons _              = throwError InvalidArguments
+
+cat :: [Value] -> Eval Value
+cat [StringVal x, StringVal y] = return $ StringVal $ x ++ y
+cat _                          = throwError InvalidArguments
 
 list :: [Value] -> Eval Value
 list args = return $ ListVal args
