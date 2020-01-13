@@ -52,7 +52,7 @@ showDebugTree tree = showTree tree where
 
     showTrees line prev [Tree ((n, p) : rest) children]
         | lineno p > line =
-            prev : showTrees (lineno p) (showLineno (lineno p) ++ " " ++ n) [Tree rest children]
+            prev : showTrees (lineno p) (showLineno (lineno p) 1 ++ " " ++ n) [Tree rest children]
         | otherwise = showTrees (lineno p) (prev ++ " " ++ n) [Tree rest children]
     showTrees line prev [Tree [] children] = showTrees line prev children
     showTrees _ prev [] = [prev]
@@ -60,12 +60,12 @@ showDebugTree tree = showTree tree where
         | startLineno t > line = prev : showAll newPrev (t : ts)
         | otherwise = showTrees line prev [t] ++ showAll blankPrev ts
         where
-            newPrev = showLineno (startLineno t)
-            blankPrev = showLineno line ++ replicate (length prev - linenoDigits) ' '
+            newPrev = showLineno (startLineno t) 1
+            blankPrev = "|" ++ showLineno line 0 ++ replicate (length prev - (linenoDigits + 1)) ' '
             showAll customPrev trees =
                 concat $ map (\x -> showTrees (startLineno t) customPrev [x]) trees
 
-    showLineno n = printf ("%" ++ show linenoDigits ++ "d") n
+    showLineno n pad = printf ("%" ++ show (linenoDigits + pad) ++ "d") n
 
     startLineno (Tree ((_, p) : _) _) = lineno p
     startLineno _                     = undefined
