@@ -8,12 +8,7 @@ module Soup.Debugger (
 
 import Soup.Value
 
-import Data.Maybe
-
-import Control.Monad.Except
 import Control.Monad.State
-
-import Debug.Trace
 
 emptyTree :: Zipper a
 emptyTree = Zipper [] Nothing []
@@ -24,7 +19,7 @@ pushTree z = Zipper [] (Just z) []
 popTree :: Zipper a -> Zipper a
 popTree (Zipper xs' (Just (Zipper xs parent children)) children') =
     Zipper xs parent (Tree xs' children' : children)
-popTree z = undefined
+popTree _ = undefined
 
 rootTree :: Zipper a -> Tree a
 rootTree (Zipper xs Nothing children) = Tree xs children

@@ -7,19 +7,14 @@ module Soup.Bootstrap (
 import Soup.Builtins
 import Soup.Env
 import Soup.Eval
-import Soup.Parse
 import Soup.Parser
 import Soup.Value
 
-import Control.Applicative
 import Control.Monad.Except
 
 import Data.Char
-import Data.List
 
 import qualified Data.Map as Map
-
-import Debug.Trace
 
 initType :: Eval Value
 initType = do
@@ -101,9 +96,9 @@ popRules :: Value -> Eval Value
 popRules v = do
     popRules' v
     where
-        popRules' (ListVal (x:y:ys))    = popRules' (ListVal (y:ys))
+        popRules' (ListVal (_:y:ys))    = popRules' (ListVal (y:ys))
         popRules' (ListVal [ListVal l]) = return $ ListVal l
-        popRules' v                     = throwError $ InvalidType v
+        popRules' x                     = throwError $ InvalidType x
 
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
@@ -165,17 +160,14 @@ parseStr = do
 isWhitespace :: Char -> Bool
 isWhitespace = (`elem` [' ', '\n', '\t'])
 
-parseWS :: Parser String
-parseWS = parseWhile isWhitespace
+parseWS :: Parser ()
+parseWS = parseWhile isWhitespace >> return ()
 
-parseWS' :: Parser String
-parseWS' = parseWhile' isWhitespace
+parseNewlines :: Parser ()
+parseNewlines = parseWhile (== '\n') >> return ()
 
-parseNewlines :: Parser String
-parseNewlines = parseWhile (== '\n')
-
-parseNewlines' :: Parser String
-parseNewlines' = parseWhile' (== '\n')
+parseNewlines' :: Parser ()
+parseNewlines' = parseWhile' (== '\n') >> return ()
 
 parseIdent :: Parser String
 parseIdent = do

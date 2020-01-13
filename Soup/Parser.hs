@@ -22,13 +22,9 @@ import Soup.Eval
 import Soup.Parse
 import Soup.Value
 
-import Control.Applicative
 import Control.Monad.Except
-import Control.Monad.State
 
 import Data.List
-
-import Debug.Trace
 
 newtype Parser a = Parser {
     runParser :: String -> (a -> String -> Eval [Value]) -> Eval [Value]
@@ -36,7 +32,7 @@ newtype Parser a = Parser {
 
 instance Monad Parser where
     return x = Parser $ \s c -> c x s
-    p >>= f = Parser $ \s c -> runParser p s $ \x s -> runParser (f x) s c
+    p >>= f = Parser $ \s c -> runParser p s $ \x s' -> runParser (f x) s' c
 
 instance Applicative Parser where
     pure = return
@@ -52,8 +48,8 @@ liftEval m = Parser $ \s c -> do
 
 parserToVal :: String -> Parser Value -> Value
 parserToVal name p = PrimFunc ("parser:" ++ name) $ \args -> do
-    args <- mapM eval args
-    case args of
+    args' <- mapM eval args
+    case args' of
         [StringVal s, c] -> do
             l <- runParser p s $ \v s' -> do
                 y <- eval $ FuncCall c [v, StringVal s']
@@ -61,7 +57,7 @@ parserToVal name p = PrimFunc ("parser:" ++ name) $ \args -> do
                     ListVal l' -> return l'
                     _          -> throwError InvalidContinuation
             return $ ListVal l
-        _ -> throwError $ InvalidArguments' name args
+        _ -> throwError $ InvalidArguments' name args'
 
 contToVal :: String -> (Value -> String -> Eval [Value]) -> Value
 contToVal name c = PrimFunc contname $ \args -> do
@@ -73,7 +69,7 @@ contToVal name c = PrimFunc contname $ \args -> do
     where contname = "cont:" ++ name
 
 parserFail :: Parser a
-parserFail = Parser $ \s c -> return []
+parserFail = Parser $ \_ _ -> return []
 
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do

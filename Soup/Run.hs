@@ -19,45 +19,31 @@ import Control.Monad.State
 
 import Data.List
 
-import System.IO
-
-import Debug.Trace
-
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
-    (Right x, (env, debugZip))  -> Right (x, rootTree debugZip, env)
-    (Left err, (env, debugZip)) -> Left (err, rootTree debugZip)
+    (Right y, (env, debugZip)) -> Right (y, rootTree debugZip, env)
+    (Left err, (_, debugZip))  -> Left (err, rootTree debugZip)
     where
         unwrapped = runIdentity (runStateT (runExceptT (unwrapEval x))
                                            (initEnv, initDebug))
 
 showDebugTree :: DebugTree -> String
-showDebugTree t = showTree t where
-    showTree t =
-        concat .
-        map showLine .
-        groupTrees .
-        map reverse .
-        filter (not . null) .
-        collectTree $ t
-
-    collectTree t = collectTrees [] [stripEmpty t]
-    collectTrees prev [Tree logs children] = collectTrees (logs ++ prev) (reverse children)
-    collectTrees prev ts = prev : concat (map (\(Tree ls cs) -> collectTrees ls cs) ts)
-
-    groupTrees = groupBy $ \a b -> startLineno a == startLineno b
+showDebugTree tree = showTree tree where
+    showTree t = intercalate "\n" (showTrees 0 "" [stripEmpty t])
 
     stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
+
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
     showTrees line prev [Tree ((n, p) : rest) children]
         | lineno p > line =
             prev : showTrees (lineno p) (show (lineno p) ++ " " ++ n) [Tree rest children]
-        | otherwise = showLog (lineno p) (prev ++ " " ++ n) rest
+        | otherwise = showTrees (lineno p) (prev ++ " " ++ n) [Tree rest children]
     showTrees line prev [Tree [] children] = showTrees line prev children
+    showTrees _ _ [] = []
     showTrees line prev (t : ts)
-        | startLineno logs > line = prev : showAll newPrev (t : ts)
+        | startLineno t > line = prev : showAll newPrev (t : ts)
         | otherwise = showTrees line prev [t] ++ showAll blankPrev ts
         where
             newPrev = show (startLineno t) ++ " "
@@ -65,10 +51,12 @@ showDebugTree t = showTree t where
             showAll customPrev trees =
                 concat $ map (\x -> showTrees (startLineno t) customPrev [x]) trees
 
-    startLineno (Tree ((n, p) : rest) _) = lineno p
-    lineno p = nlines (program t) - nlines p + 1
+    startLineno (Tree ((_, p) : _) _) = lineno p
+    startLineno _                     = undefined
+    lineno p = nlines (program tree) - nlines p + 1
     nlines = length . lines
     program (Tree [(_, p)] _) = p
+    program _                 = undefined
 
 parseStr' :: String -> Either (InterpError, DebugTree) ([Value], DebugTree, Env)
 parseStr' s = runEval (emptyEnv, emptyTree) $ do
@@ -92,7 +80,7 @@ parseStr s = do
 
 runStr :: String -> Either (InterpError, DebugTree) Value
 runStr s = do
-    (exprs, tree, env) <- parseStr' s
+    (exprs, _, env) <- parseStr' s
     (vals, _, _) <- runEval (env, emptyTree) $ mapM eval exprs
     return $ last vals
 
@@ -100,7 +88,7 @@ debugFile :: String -> IO ()
 debugFile fname = do
     file <- readFile fname
     case parseStr' file of
-        Right (vals, tree, env) -> do
+        Right (vals, tree, _) -> do
             print (ListVal vals)
             showTree tree
         Left (err, tree) -> do

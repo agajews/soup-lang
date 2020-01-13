@@ -8,8 +8,8 @@ module Soup.Value (
     Eval(..),
     Env(..),
     InterpError(..),
-    DebugTree(..),
-    DebugZipper(..),
+    DebugTree,
+    DebugZipper,
     Tree(..),
     Zipper(..),
 ) where
@@ -87,7 +87,7 @@ instance Show Value where
         else "[" ++ intercalate " " (map show l) ++ "]"
     show (PrimFunc name _) = name
     show (Lambda ps b) = "(/\\ " ++ intercalate " " (map identName ps) ++ show b ++ ")"
-    show (Variable (Ident name x)) = "'" ++ name
+    show (Variable (Ident name _)) = "'" ++ name
     show (FuncCall v args) = if null args
         then "(" ++ show v ++ ")"
         else "(" ++ show v ++ " " ++ intercalate " " (map show args) ++ ")"

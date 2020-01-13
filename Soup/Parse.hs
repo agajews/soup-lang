@@ -10,9 +10,6 @@ import Soup.Eval
 import Soup.Value
 
 import Control.Monad.Except
-import Control.Monad.State
-
-import Debug.Trace
 
 extractParsing :: Value -> [Value] -> Value -> Eval [Value]
 extractParsing _ _ (ListVal l) = return l

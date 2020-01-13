@@ -8,14 +8,11 @@ import Soup.Debugger
 import Soup.Env
 import Soup.Eval
 import Soup.Parse
-import Soup.Parser
 import Soup.Value
 
 import Control.Monad.Except
 
 import Data.List
-
-import Debug.Trace
 
 builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
@@ -75,7 +72,7 @@ parseFun [StringVal s, ListVal l] = do
 parseFun _ = throwError InvalidArguments
 
 doFun :: [Value] -> Eval Value
-doFun args@(x:_) = return $ last args
+doFun args@(_:_) = return $ last args
 doFun _          = throwError InvalidArguments
 
 cons :: [Value] -> Eval Value
@@ -101,8 +98,8 @@ startsWith _ = throwError InvalidArguments
 
 dropFun :: [Value] -> Eval Value
 dropFun [IntVal n, ListVal l] = return $ ListVal $ drop' n l where
-    drop' 0 l      = l
-    drop' n (x:xs) = drop' (n-1) xs
+    drop' 0 l'     = l'
+    drop' k (_:xs) = drop' (k-1) xs
     drop' _ []     = []
 dropFun [IntVal n, StringVal s] = do
     l <- strToList [StringVal s]
@@ -142,11 +139,13 @@ ifFun [cond, thenExpr, elseExpr] = do
     case b of
         ListVal [] -> eval elseExpr
         _          -> eval thenExpr
+ifFun _ = throwError InvalidArguments
 
 apply :: [Value] -> Eval Value
 apply (f:args) = do
     args' <- mapM eval args
     eval $ FuncCall f args'
+apply _ = throwError InvalidArguments
 
 quote :: [Value] -> Eval Value
 quote [v] = return v

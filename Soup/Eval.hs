@@ -7,8 +7,6 @@ import Soup.Env
 import Soup.Value
 
 import Control.Monad.Except
-import Control.Monad.Identity
-import Control.Monad.State
 
 eval :: Value -> Eval Value
 eval x@(StringVal _) = return x
@@ -20,10 +18,11 @@ eval (Variable n) = getVar n
 eval (FuncCall f args) = do
     f' <- eval f
     case f' of
-        PrimFunc _ f' -> f' args
+        PrimFunc _ f'' -> f'' args
         Lambda params body -> do
             catchError (matchArgs params args) $ \err -> case err of
                 MismatchedArgs -> throwError $ MismatchedArgs' params args
+                _              -> throwError err
             res <- eval body
             return res
         _ -> throwError $ NotAFunction f'
