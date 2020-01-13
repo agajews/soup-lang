@@ -15,6 +15,8 @@ import Control.Applicative
 import Control.Monad.Except
 
 import Data.Char
+import Data.List
+
 import qualified Data.Map as Map
 
 import Debug.Trace
@@ -66,8 +68,6 @@ lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
-    logDebug "\\"
-
     parseWS
     parseString "("
 
@@ -77,6 +77,8 @@ lambdaParser pexp = do
 
     parseString ")"
     parseWS
+
+    logDebug $ "\\" ++ intercalate " " paramNames ++ "\\"
 
     liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
     body <- parseType pexp
@@ -128,7 +130,6 @@ parseInt = do
 parseStr :: Parser Value
 parseStr = do
     parseString "\""
-    logDebug "\""
     s <- takeString
     logDebug $ "\"" ++ s ++ "\""
     return $ StringVal s
