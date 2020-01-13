@@ -21,6 +21,14 @@ import Data.List
 
 import System.IO
 
+import Debug.Trace
+
+debugMaxlen :: Int
+debugMaxlen = 100
+
+debugMinlen :: Int
+debugMinlen = 20
+
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
     (Right x, (env, debugZip))  -> Right (x, rootTree debugZip, env)
@@ -31,7 +39,7 @@ runEval (initEnv, initDebug) x = case unwrapped of
 
 showDebugTree :: DebugTree -> String
 showDebugTree t = showTree t where
-    showTree t = intercalate "\n" (map showLine $ collectTree t)
+    showTree t = concat (map showLine $ collectTree t)
     collectTree t = collectTrees 0 [] [stripEmpty t]
 
     collectTrees k prev [Tree logs children] =
@@ -45,9 +53,22 @@ showDebugTree t = showTree t where
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
-    showLine (k, logs) = indent k ++ intercalate " " (reverse $ map fst logs)
+    showLine (k, logs) = intercalate "\n" (firstLine : map wrapLine (tail logNames)) ++ "\n"
+        where
+            firstLine = indent k ++ concat (head logNames)
+            wrapLine ws = emptyIndent k ++ concat ws
+            logNames = wrapSplit lineLen . map (++ " ") . reverse . map fst $ logs
+            lineLen = max (debugMaxlen - (length $ indent k)) debugMinlen
+
+    wrapSplit l words = wrapSplit' words [] 0 where
+        wrapSplit' (w:ws) curr 0 = wrapSplit' ws (w:curr) (length w)
+        wrapSplit' (w:ws) curr k
+            | l - k >= length w = wrapSplit' ws (w:curr) (k + length w)
+            | otherwise = reverse curr : wrapSplit' (w:ws) [] 0
+        wrapSplit' [] curr _ = [reverse curr]
 
     indent k = concat $ replicate k "| "
+    emptyIndent k = replicate (2 * k) ' '
     lineno p = nlines (program t) - nlines p + 1
     nlines = length . lines
     program (Tree [(_, p)] _) = p
