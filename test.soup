@@ -43,3 +43,6 @@
         (apply (eval c) (head l) (head (tail l)))))
     (span (eval pred) (eval s))))))
 
+(run (define-var "parse-ws" (lambda (s c)
+    (parse-while (lambda (x) (elem (list " " "\n" "\t") x)) (eval s) (eval c)))))
+
