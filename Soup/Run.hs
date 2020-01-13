@@ -30,13 +30,18 @@ runEval (initEnv, initDebug) x = case unwrapped of
                                            (initEnv, initDebug))
 
 showDebugTree :: DebugTree -> String
-showDebugTree t@(Tree [(_, program)] _) = showEntry 0 [t] where
+showDebugTree t@(Tree [(_, program)] _) = showEntry 0 [stripEmpty t] where
     showEntry k [t@(Tree logs children)] = showInline logs ++ showEntry k (reverse children)
     showEntry k ts = concat $ map (showFull $ k + 1) ts
 
     showFull k (Tree logs children) =
         indent k ++ showInline logs ++ showEntry k (reverse children)
-    showInline logs = intercalate " " (map (\(n, p) -> n) logs) ++ " "
+    showInline logs = intercalate " " (map (\(n, p) -> n) $ reverse logs) ++ " "
+
+    stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
+
+    notEmpty (Tree [] []) = False
+    notEmpty _            = True
 
     indent k = "\n" ++ (concat $ replicate k "| ")
     lineno p = nlines program - nlines p + 1
