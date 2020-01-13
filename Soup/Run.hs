@@ -30,22 +30,27 @@ runEval (initEnv, initDebug) x = case unwrapped of
                                            (initEnv, initDebug))
 
 showDebugTree :: DebugTree -> String
-showDebugTree t@(Tree [(_, program)] _) = showEntry 0 [stripEmpty t] where
-    showEntry k [t@(Tree logs children)] = showInline logs ++ showEntry k (reverse children)
-    showEntry k ts = concat $ map (showFull $ k + 1) ts
+showDebugTree t = showTree t where
+    showTree t = intercalate "\n" (map showLine $ collectTree t)
+    collectTree t = collectTrees 0 [] [stripEmpty t]
 
-    showFull k (Tree logs children) =
-        indent k ++ showInline logs ++ showEntry k (reverse children)
-    showInline logs = intercalate " " (map (\(n, p) -> n) $ reverse logs) ++ " "
+    collectTrees k prev [Tree logs children] =
+        collectTrees k (logs ++ prev) (reverse children)
+    collectTrees k prev ts = (k, prev) : concat (map (fullEntry $ k + 1) ts)
+
+    fullEntry k (Tree logs children) = collectTrees k logs children
 
     stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
 
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
-    indent k = "\n" ++ (concat $ replicate k "| ")
-    lineno p = nlines program - nlines p + 1
+    showLine (k, logs) = indent k ++ intercalate " " (reverse $ map fst logs)
+
+    indent k = concat $ replicate k "| "
+    lineno p = nlines (program t) - nlines p + 1
     nlines = length . lines
+    program (Tree [(_, p)] _) = p
 
 parseStr' :: String -> Either (InterpError, DebugTree) ([Value], DebugTree, Env)
 parseStr' s = runEval (emptyEnv, emptyTree) $ do
