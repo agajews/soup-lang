@@ -73,9 +73,8 @@ lambdaParser pexp = do
     let paramParsers = zipWith literalParser paramNames (map Variable paramIdents)
 
     parseString ")"
-    parseWS
-
     logDebug $ (concat $ map (\n -> n ++ " ") paramNames) ++ "."
+    parseWS
 
     liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
     body <- parseType pexp

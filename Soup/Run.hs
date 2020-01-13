@@ -19,6 +19,8 @@ import Control.Monad.State
 
 import Data.List
 
+import Debug.Trace
+
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
     (Right y, (env, debugZip)) -> Right (y, rootTree debugZip, env)
@@ -29,25 +31,31 @@ runEval (initEnv, initDebug) x = case unwrapped of
 
 showDebugTree :: DebugTree -> String
 showDebugTree tree = showTree tree where
-    showTree t = intercalate "\n" (showTrees 0 "" [stripEmpty t])
+    showTree t = intercalate "\n" (showTrees 0 "" [flipLogs $ stripEmpty t])
 
     stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
 
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
+    flipLogs (Tree logs children) = Tree (reverse logs) (map flipLogs children)
+
+    -- justNames (Tree logs children) = Tree (map fst logs) (map justNames children)
+
+    -- shallowNames (Tree logs _) = map fst logs
+
     showTrees line prev [Tree ((n, p) : rest) children]
         | lineno p > line =
             prev : showTrees (lineno p) (show (lineno p) ++ " " ++ n) [Tree rest children]
         | otherwise = showTrees (lineno p) (prev ++ " " ++ n) [Tree rest children]
     showTrees line prev [Tree [] children] = showTrees line prev children
-    showTrees _ _ [] = []
+    showTrees _ prev [] = [prev]
     showTrees line prev (t : ts)
         | startLineno t > line = prev : showAll newPrev (t : ts)
         | otherwise = showTrees line prev [t] ++ showAll blankPrev ts
         where
             newPrev = show (startLineno t) ++ " "
-            blankPrev = show line ++ replicate (length prev - length (show line)) ' '
+            blankPrev = show line ++ replicate (length prev - length (show line) - 1) ' '
             showAll customPrev trees =
                 concat $ map (\x -> showTrees (startLineno t) customPrev [x]) trees
 
