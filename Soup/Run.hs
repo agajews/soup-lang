@@ -17,6 +17,8 @@ import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.State
 
+import Data.List
+
 import System.IO
 
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
@@ -27,22 +29,23 @@ runEval (initEnv, initDebug) x = case unwrapped of
         unwrapped = runIdentity (runStateT (runExceptT (unwrapEval x))
                                            (initEnv, initDebug))
 
-showDebugTree t@(Tree (_, program) _) = showEntry 0 [t] where
-    showEntry k [t@(Tree (n, p) children)] = showInline n p ++ showEntry k (reverse children)
+showDebugTree :: DebugTree -> String
+showDebugTree t@(Tree [(_, program)] _) = showEntry 0 [t] where
+    showEntry k [t@(Tree logs children)] = showInline logs ++ showEntry k (reverse children)
     showEntry k ts = concat $ map (showFull $ k + 1) ts
 
-    showFull k (Tree (n, p) children) =
-        indent k ++ showInline n p ++ showEntry k (reverse children)
-    -- showInline n p = n ++ "(" ++ (show $ lineno p) ++ ") "
-    showInline n p = n ++ " "
+    showFull k (Tree logs children) =
+        indent k ++ showInline logs ++ showEntry k (reverse children)
+    showInline logs = intercalate " " (map (\(n, p) -> n) logs) ++ " "
 
     indent k = "\n" ++ (concat $ replicate k "| ")
     lineno p = nlines program - nlines p + 1
     nlines = length . lines
 
 parseStr' :: String -> Either (InterpError, DebugTree) ([Value], DebugTree, Env)
-parseStr' s = runEval (emptyEnv, emptyTree ("ROOT", s)) $ do
+parseStr' s = runEval (emptyEnv, emptyTree) $ do
     t <- initType
+    logParser "ROOT" s
     parsing <- parse s [(t, contToVal "final-continuation" finalContinuation)]
     case parsing of
         [ListVal l] -> return l
@@ -62,7 +65,7 @@ parseStr s = do
 runStr :: String -> Either (InterpError, DebugTree) Value
 runStr s = do
     (exprs, tree, env) <- parseStr' s
-    (vals, _, _) <- runEval (env, emptyTree ("run-root", "")) $ mapM eval exprs
+    (vals, _, _) <- runEval (env, emptyTree) $ mapM eval exprs
     return $ last vals
 
 debugFile :: String -> IO ()

@@ -15,38 +15,35 @@ import Control.Monad.State
 
 import Debug.Trace
 
-emptyTree :: a -> Zipper a
-emptyTree x = Zipper Nothing Nothing [Tree x []]
+emptyTree :: Zipper a
+emptyTree = Zipper [] Nothing []
 
 pushTree :: Zipper a -> Zipper a
-pushTree (Zipper y parent (Tree x children : rest)) =
-    Zipper (Just x) (Just $ Zipper y parent rest) children
-pushTree z = z
+pushTree z = Zipper [] (Just z) []
 
 popTree :: Zipper a -> Zipper a
-popTree (Zipper (Just y) (Just (Zipper x parent children')) children) =
-    Zipper x parent (Tree y children : children')
-popTree z = z
+popTree (Zipper xs' (Just (Zipper xs parent children)) children') =
+    Zipper xs parent (Tree xs' children' : children)
+popTree z = undefined
 
 rootTree :: Zipper a -> Tree a
-rootTree (Zipper _ Nothing [x])  = x
-rootTree z@(Zipper _ (Just _) _) = rootTree $ popTree z
-rootTree _                       = undefined
+rootTree (Zipper xs Nothing children) = Tree xs children
+rootTree z                            = rootTree $ popTree z
 
-addChild :: a -> Zipper a -> Zipper a
-addChild x (Zipper y parent children) = Zipper y parent (Tree x [] : children)
+addData :: a -> Zipper a -> Zipper a
+addData x (Zipper xs parent children) = Zipper (x : xs) parent children
 
 pushDebug :: Eval ()
 pushDebug = do
-    (env, tree) <- get
-    put (env, pushTree tree)
+    (env, debugZip) <- get
+    put (env, pushTree debugZip)
 
 popDebug :: Eval ()
 popDebug = do
-    (env, tree) <- get
-    put (env, popTree tree)
+    (env, debugZip) <- get
+    put (env, popTree debugZip)
 
 logParser :: String -> String -> Eval ()
 logParser name program = do
-    (env, tree) <- get
-    put (env, addChild (name, program) tree)
+    (env, debugZip) <- get
+    put (env, addData (name, program) debugZip)

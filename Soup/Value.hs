@@ -63,11 +63,11 @@ newtype Eval a = Eval {
             MonadState (Env, DebugZipper))
 
 -- (data at current node) (children)
-data Tree a = Tree a [Tree a]
+data Tree a = Tree [a] [Tree a]
     deriving (Show)
 
 -- (data at current node) (parent, whose children exclude this node) (children)
-data Zipper a = Zipper (Maybe a) (Maybe (Zipper a)) [Tree a]
+data Zipper a = Zipper [a] (Maybe (Zipper a)) [Tree a]
     deriving (Show)
 
 type DebugZipper = Zipper (String, String)
