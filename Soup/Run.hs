@@ -54,8 +54,8 @@ showDebugTree tree = showTree tree where
         | startLineno t > line = prev : showAll newPrev (t : ts)
         | otherwise = showTrees line prev [t] ++ showAll blankPrev ts
         where
-            newPrev = show (startLineno t) ++ " "
-            blankPrev = show line ++ replicate (length prev - length (show line) - 1) ' '
+            newPrev = show (startLineno t)
+            blankPrev = show line ++ replicate (length prev - length (show line)) ' '
             showAll customPrev trees =
                 concat $ map (\x -> showTrees (startLineno t) customPrev [x]) trees
 
