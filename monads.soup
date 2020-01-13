@@ -3,7 +3,9 @@
     (apply (lambda (var m)
         (lambda (s c) (apply (lambda (s1 c1)
             (if (starts-with s1 m)
-                (apply c1 var (drop (length m) s1))
+                (do
+                    (log-parser "'parse-str" s1)
+                    (apply c1 var (drop (length m) s1)))
                 (list)))
             (eval s) (eval c))))
         (gen-var "parse-str") "parse-str")
@@ -18,18 +20,20 @@
 (run (set! pexp (cons
     (apply
         (lambda (var) (lambda (s c)
-            (parse-str "define-var" (eval s) (lambda (_ s1)
-            (apply (eval c) var (eval s1))))))
+            (parse-str "define-var" (eval s) (lambda (_ s1) (apply (lambda (c2 s2) (do
+                (log-parser "'define-var" s2)
+                (apply c2 var s2))) (eval c) (eval s1))))))
         (gen-var "define-var"))
     pexp)))
 
 (run (set! define-var (lambda (name val) (apply (lambda (name1) (apply (lambda (var) (do
     (set! pexp (cons
         (lambda (s c)
-            (parse-str (eval name1) (eval s) (lambda (_ s1)
-            (apply (eval c) var (eval s1)))))
+            (parse-str (eval name1) (eval s) (lambda (_ s1) (apply (lambda (c2 s2) (do
+                (log-parser (cat "'" name1) s2)
+                (apply c2 var s2))) (eval c) (eval s1)))))
         pexp))
-    (set! (eval var) val))) (gen-var name1))) name))))
+    (apply set! var (quote val)))) (gen-var name1))) name))))
 
 (run (define-var "prepend!" (lambda (l x)
     (apply set! l (cons x (eval l))))))

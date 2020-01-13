@@ -121,7 +121,7 @@ parseFuncCall pexp = do
 parseRun :: Ident -> Parser Value
 parseRun pexp = do
     parseString "(run"
-    logDebug "run"
+    logDebug "(run"
     parseWS
     expr <- parseType pexp
     parseString ")"
