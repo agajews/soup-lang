@@ -172,8 +172,9 @@ parseNewlines' = parseWhile' (== '\n')
 parseIdent :: Parser String
 parseIdent = do
     name <- parseWhile $ liftM2 (||) isAlphaNum (`elem` "~!@#$%^&*-=+_|'<>?")
-    guard $ not . null . filter (not . isDigit) $ name
-    return name
+    if all isDigit name
+    then parserFail
+    else return name
 
 builtinParser :: (String, Value) -> Value
 builtinParser (name, f) = parserToVal name $ literalParser name f

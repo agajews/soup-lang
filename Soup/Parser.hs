@@ -4,6 +4,7 @@ module Soup.Parser (
     contToVal,
     liftEval,
     catchFail,
+    parserFail,
     parseType,
     parseString,
     parseIf,
@@ -44,10 +45,6 @@ instance Applicative Parser where
 instance Functor Parser where
     fmap = liftM
 
-instance Alternative Parser where
-    empty = Parser $ \s c -> return []
-    p <|> q = Parser $ \s c -> liftM2 (++) (runParser p s c) (runParser q s c)
-
 liftEval :: Eval a -> Parser a
 liftEval m = Parser $ \s c -> do
     x <- m
@@ -74,6 +71,9 @@ contToVal name c = PrimFunc contname $ \args -> do
             return $ ListVal l
         _ -> throwError $ InvalidArguments' contname args
     where contname = "cont:" ++ name
+
+parserFail :: Parser a
+parserFail = Parser $ \s c -> return []
 
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do
