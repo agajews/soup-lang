@@ -36,10 +36,10 @@ initType = do
 
     setVar pexpType $ ListVal $ [
         pexpFun,
+        topFun,
         lambdaFun,
         funcCallFun,
         runFun,
-        topFun,
         intFun,
         strFun] ++ builtinParsers
     setVar topType $ ListVal [parserToVal "pexp" $ parseType pexpType]
@@ -60,11 +60,13 @@ topParser topType = do
     return $ ListVal vals
 
 literalParser :: String -> Value -> Parser Value
-literalParser s v = parseString s >> logDebug s >> return v
+literalParser s v = parseString s >> (logDebug $ "`" ++ s ++ "`") >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
+
+    logDebug "\\"
 
     parseWS
     parseString "("
@@ -80,23 +82,17 @@ lambdaParser pexp = do
     body <- parseType pexp
     liftEval $ modifyVar pexp popRules
 
-    -- traceShow body $ return ()
-
     parseString ")"
-
-    -- traceShow "got close parenthesis" $ return ()
 
     return $ Lambda paramIdents body
 
 pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
 pushRules names ps l@(ListVal _) = do
-    -- traceShow ("pushing", names, l) $ return ()
     return $ ListVal $ (zipWith parserToVal names ps) ++ [l]
 pushRules _ _ v = throwError $ InvalidType v
 
 popRules :: Value -> Eval Value
 popRules v = do
-    -- traceShow ("popping", v) $ return ()
     popRules' v
     where
         popRules' (ListVal (x:y:ys))    = popRules' (ListVal (y:ys))
@@ -106,7 +102,7 @@ popRules v = do
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
     parseString "("
-    logDebug "func-call"
+    logDebug "()"
     fun <- parseType pexp
     args <- catchFail (return []) $ do
         parseWS
@@ -117,6 +113,7 @@ parseFuncCall pexp = do
 parseRun :: Ident -> Parser Value
 parseRun pexp = do
     parseString "(run"
+    logDebug "run"
     parseWS
     expr <- parseType pexp
     parseString ")"
@@ -124,20 +121,35 @@ parseRun pexp = do
 
 parseInt :: Parser Value
 parseInt = do
-    digit <- parseWhile isDigit
-    return $ IntVal $ read digit
+    digits <- parseWhile isDigit
+    logDebug $ show digits
+    return $ IntVal $ read digits
 
 parseStr :: Parser Value
 parseStr = do
     parseString "\""
-    s <- parseMany' $ parseIf (not . (`elem` ['\\', '\"'])) <|> parseEscape
-    parseString "\""
+    logDebug "\""
+    s <- takeString
+    logDebug $ "\"" ++ s ++ "\""
     return $ StringVal s
     where
-        parseEscape = do
-            parseString "\\"
-            c <- parseIf (`Map.member` codes)
-            return $ codes Map.! c
+        takeString = do
+            c <- takeChar
+            if null c
+            then return c
+            else do
+                s <- takeString
+                return $ c ++ s
+
+        takeChar = Parser $ \s c -> case s of
+            ('"':xs) -> c "" xs
+            ('\\':x:xs) -> if Map.member x codes
+                then c [codes Map.! x] xs
+                else c [x] xs
+            ('\\':[]) -> return []
+            (x:xs) -> c [x] xs
+            "" -> return []
+
         codes = Map.fromList [('b', '\b'), ('n', '\n'), ('f', '\f'), ('r', '\r'),
                               ('t', '\t'), ('\\', '\\'), ('\"', '\"')]
 

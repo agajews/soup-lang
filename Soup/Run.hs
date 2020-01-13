@@ -25,11 +25,16 @@ runEval (initEnv, initDebug) x = case unwrapped of
         unwrapped = runIdentity (runStateT (runExceptT (unwrapEval x))
                                            (initEnv, initDebug))
 
-showDebugTree t@(Tree (_, program) _) = showEntry 0 t where
-    showEntry k (Tree (n, p) children) =
-        indent k ++ n ++ " (" ++ (show $ lineno p) ++ ")\n" ++
-        (concat $ map (showEntry $ k + 1) children)
-    indent k = concat $ replicate k "| "
+showDebugTree t@(Tree (_, program) _) = showEntry 0 [t] where
+    showEntry k [t@(Tree (n, p) children)] = showInline n p ++ showEntry k (reverse children)
+    showEntry k ts = concat $ map (showFull $ k + 1) ts
+
+    showFull k (Tree (n, p) children) =
+        indent k ++ showInline n p ++ showEntry k (reverse children)
+    -- showInline n p = n ++ "(" ++ (show $ lineno p) ++ ") "
+    showInline n p = n ++ " "
+
+    indent k = "\n" ++ (concat $ replicate k "| ")
     lineno p = nlines program - nlines p + 1
     nlines = length . lines
 

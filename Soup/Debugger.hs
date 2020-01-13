@@ -47,6 +47,6 @@ popDebug = do
     put (env, popTree tree)
 
 logParser :: String -> String -> Eval ()
-logParser name program = traceShow name $ do
+logParser name program = do
     (env, tree) <- get
     put (env, addChild (name, program) tree)
