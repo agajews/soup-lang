@@ -62,13 +62,13 @@ topParser topType = do
     return $ ListVal vals
 
 literalParser :: String -> Value -> Parser Value
-literalParser s v = parseString s >> (logDebug $ "`" ++ s ++ "`") >> return v
+literalParser s v = parseString s >> (logDebug $ "'" ++ s) >> return v
 
 lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
-    logDebug "/\\"
+    logDebug "(/\\"
 
     parseWS
     parseString "("
@@ -80,7 +80,7 @@ lambdaParser pexp = do
     parseString ")"
     parseWS
 
-    logDebug $ intercalate " " paramNames ++ " ."
+    logDebug $ (concat $ map (\n -> n ++ " ") paramNames) ++ "."
 
     liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
     body <- parseType pexp
@@ -88,7 +88,7 @@ lambdaParser pexp = do
 
     parseString ")"
 
-    logDebug "\\/"
+    logDebug ")"
 
     return $ Lambda paramIdents body
 
@@ -125,6 +125,7 @@ parseRun pexp = do
     parseWS
     expr <- parseType pexp
     parseString ")"
+    logDebug ")"
     liftEval $ eval expr
 
 parseInt :: Parser Value
