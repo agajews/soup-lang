@@ -68,6 +68,8 @@ lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
+    logDebug "/\\"
+
     parseWS
     parseString "("
 
@@ -78,13 +80,15 @@ lambdaParser pexp = do
     parseString ")"
     parseWS
 
-    logDebug $ "\\" ++ intercalate " " paramNames ++ "\\"
+    logDebug $ intercalate " " paramNames ++ " ."
 
     liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
     body <- parseType pexp
     liftEval $ modifyVar pexp popRules
 
     parseString ")"
+
+    logDebug "\\/"
 
     return $ Lambda paramIdents body
 
@@ -104,12 +108,14 @@ popRules v = do
 parseFuncCall :: Ident -> Parser Value
 parseFuncCall pexp = do
     parseString "("
-    logDebug "()"
+    logDebug "("
     fun <- parseType pexp
+    logDebug "."
     args <- catchFail (return []) $ do
         parseWS
         parseInterspersed (parseType pexp) parseWS
     parseString ")"
+    logDebug ")"
     return $ FuncCall fun args
 
 parseRun :: Ident -> Parser Value
@@ -130,8 +136,9 @@ parseInt = do
 parseStr :: Parser Value
 parseStr = do
     parseString "\""
+    logDebug "\""
     s <- takeString
-    logDebug $ "\"" ++ s ++ "\""
+    logDebug $ s ++ "\""
     return $ StringVal s
     where
         takeString = do
