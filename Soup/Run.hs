@@ -51,14 +51,21 @@ showDebugTree t = showTree t where
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
-    showLine logs = intercalate "\n" (firstParsing : map restParsing (tail names)) ++ "\n"
+    showTrees line prev [Tree ((n, p) : rest) children]
+        | lineno p > line =
+            prev : showTrees (lineno p) (show (lineno p) ++ " " ++ n) [Tree rest children]
+        | otherwise = showLog (lineno p) (prev ++ " " ++ n) rest
+    showTrees line prev [Tree [] children] = showTrees line prev children
+    showTrees line prev (t : ts)
+        | startLineno logs > line = prev : showAll newPrev (t : ts)
+        | otherwise = showTrees line prev [t] ++ showAll blankPrev ts
         where
-            firstParsing = (show line) ++ " " ++ intercalate " " (head names)
-            restParsing ws = "    " ++ concat ws
-            names = map (map fst) logs
-            line = startLineno (head logs)
+            newPrev = show (startLineno t) ++ " "
+            blankPrev = show line ++ replicate (length prev - length (show line)) ' '
+            showAll customPrev trees =
+                concat $ map (\x -> showTrees (startLineno t) customPrev [x]) trees
 
-    startLineno ((n, p) : rest) = lineno p
+    startLineno (Tree ((n, p) : rest) _) = lineno p
     lineno p = nlines (program t) - nlines p + 1
     nlines = length . lines
     program (Tree [(_, p)] _) = p
