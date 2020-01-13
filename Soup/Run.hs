@@ -17,9 +17,8 @@ import Control.Monad.Except
 import Control.Monad.Identity
 import Control.Monad.State
 
+import Data.Function
 import Data.List
-
-import Debug.Trace
 
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
@@ -31,18 +30,23 @@ runEval (initEnv, initDebug) x = case unwrapped of
 
 showDebugTree :: DebugTree -> String
 showDebugTree tree = showTree tree where
-    showTree t = intercalate "\n" (showTrees 0 "" [flipLogs $ stripEmpty t])
-
+    processTree t = sortMarked . markDepth 0 . flipLogs . stripEmpty $ t
+    showTree t = intercalate "\n" (showTrees 0 "" [processTree t])
+    flipLogs (Tree logs children) = Tree (reverse logs) (map flipLogs children)
     stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
 
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
-    flipLogs (Tree logs children) = Tree (reverse logs) (map flipLogs children)
+    markedToDepth (Tree (d, _) _) = d
 
-    -- justNames (Tree logs children) = Tree (map fst logs) (map justNames children)
+    markDepth d (Tree logs []) = Tree (d, logs) []
+    markDepth d (Tree logs children) = Tree (m, logs) markedChildren where
+        markedChildren = map (markDepth (d + 1 :: Int)) children
+        m = maximum (map markedToDepth markedChildren)
 
-    -- shallowNames (Tree logs _) = map fst logs
+    sortMarked (Tree (_, logs) children) =
+        Tree logs (map sortMarked $ sortBy (compare `on` markedToDepth) children)
 
     showTrees line prev [Tree ((n, p) : rest) children]
         | lineno p > line =
@@ -104,5 +108,5 @@ debugFile fname = do
             showTree tree
     where
         showTree tree = do
-            putStrLn "=== DEBUG OUTPUT ==="
+            putStr "=== DEBUG OUTPUT ==="
             putStrLn $ showDebugTree tree

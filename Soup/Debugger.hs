@@ -21,7 +21,7 @@ popTree (Zipper xs' (Just (Zipper xs parent children)) children') =
     Zipper xs parent (Tree xs' children' : children)
 popTree _ = undefined
 
-rootTree :: Zipper a -> Tree a
+rootTree :: Zipper a -> Tree [a]
 rootTree (Zipper xs Nothing children) = Tree xs children
 rootTree z                            = rootTree $ popTree z
 
