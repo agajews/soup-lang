@@ -23,12 +23,6 @@ import System.IO
 
 import Debug.Trace
 
-debugMaxlen :: Int
-debugMaxlen = 100
-
-debugMinlen :: Int
-debugMinlen = 20
-
 runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
 runEval (initEnv, initDebug) x = case unwrapped of
     (Right x, (env, debugZip))  -> Right (x, rootTree debugZip, env)
@@ -39,36 +33,32 @@ runEval (initEnv, initDebug) x = case unwrapped of
 
 showDebugTree :: DebugTree -> String
 showDebugTree t = showTree t where
-    showTree t = concat (map showLine $ collectTree t)
-    collectTree t = collectTrees 0 [] [stripEmpty t]
+    showTree t =
+        concat .
+        map showLine .
+        groupTrees .
+        map reverse .
+        filter (not . null) .
+        collectTree $ t
 
-    collectTrees k prev [Tree logs children] =
-        collectTrees k (logs ++ prev) (reverse children)
-    collectTrees k prev ts = (k, prev) : concat (map (fullEntry $ k + 1) ts)
+    collectTree t = collectTrees [] [stripEmpty t]
+    collectTrees prev [Tree logs children] = collectTrees (logs ++ prev) (reverse children)
+    collectTrees prev ts = prev : concat (map (\(Tree ls cs) -> collectTrees ls cs) ts)
 
-    fullEntry k (Tree logs children) = collectTrees k logs children
+    groupTrees = groupBy $ \a b -> startLineno a == startLineno b
 
     stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
-
     notEmpty (Tree [] []) = False
     notEmpty _            = True
 
-    showLine (k, logs) = intercalate "\n" (firstLine : map wrapLine (tail logNames)) ++ "\n"
+    showLine logs = intercalate "\n" (firstParsing : map restParsing (tail names)) ++ "\n"
         where
-            firstLine = indent k ++ concat (head logNames)
-            wrapLine ws = emptyIndent k ++ concat ws
-            logNames = wrapSplit lineLen . map (++ " ") . reverse . map fst $ logs
-            lineLen = max (debugMaxlen - (length $ indent k)) debugMinlen
+            firstParsing = (show line) ++ " " ++ intercalate " " (head names)
+            restParsing ws = "    " ++ concat ws
+            names = map (map fst) logs
+            line = startLineno (head logs)
 
-    wrapSplit l words = wrapSplit' words [] 0 where
-        wrapSplit' (w:ws) curr 0 = wrapSplit' ws (w:curr) (length w)
-        wrapSplit' (w:ws) curr k
-            | l - k >= length w = wrapSplit' ws (w:curr) (k + length w)
-            | otherwise = reverse curr : wrapSplit' (w:ws) [] 0
-        wrapSplit' [] curr _ = [reverse curr]
-
-    indent k = concat $ replicate k "| "
-    emptyIndent k = replicate (2 * k) ' '
+    startLineno ((n, p) : rest) = lineno p
     lineno p = nlines (program t) - nlines p + 1
     nlines = length . lines
     program (Tree [(_, p)] _) = p
