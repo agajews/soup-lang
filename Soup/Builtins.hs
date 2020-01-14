@@ -30,6 +30,7 @@ builtins = [function "+" $ intBinOp (+),
             function "eval" evalFun,
             function "starts-with" startsWith,
             function "length" lengthFun,
+            function "elem" elemFun,
             function "cat" cat,
             function "span" spanFun,
             function "empty-str" emptyStr,
@@ -124,6 +125,13 @@ listTail :: [Value] -> Eval Value
 listTail [ListVal (_:xs)] = return $ ListVal xs
 listTail _                = throwError InvalidArguments
 
+valToScope :: [Value] -> Eval [Integer]
+valToScope (IntVal x : xs) = do
+    rest <- valToScope xs
+    return (x : rest)
+valToScope [] = return []
+valToScope _ = throwError InvalidArguments
+
 evalFun :: [Value] -> Eval Value
 evalFun [ListVal scope, v] = do
     callerScope <- getScope
@@ -132,12 +140,6 @@ evalFun [ListVal scope, v] = do
     res <- eval v
     setScope callerScope
     return res
-    where
-        valToScope (IntVal x : xs) = do
-            rest <- valToScope xs
-            return (x : rest)
-        valToScope [] = return []
-        valToScope _ = throwError InvalidArguments
 evalFun _          = throwError InvalidArguments
 
 startsWith :: [Value] -> Eval Value
@@ -162,6 +164,11 @@ lengthFun [ListVal l]   = return $ IntVal $ toInteger $ length l
 lengthFun [StringVal s] = return $ IntVal $ toInteger $ length s
 lengthFun _             = throwError InvalidArguments
 
+elemFun :: [Value] -> Eval Value
+elemFun [ListVal l, x] = return $ case x `elem` l of
+    True  -> x
+    False -> ListVal []
+
 strToList :: [Value] -> Eval Value
 strToList [StringVal s] = return $ ListVal $ map (StringVal . (:[])) s
 strToList _             = throwError InvalidArguments
@@ -184,9 +191,10 @@ set [Variable n, v] = do
 set _ = throwError InvalidArguments
 
 def :: [Value] -> Eval Value
-def [Variable n, v, IntVal k] = do
+def [ListVal scope, Variable n, v] = do
     v' <- eval v
-    defVar n v' k
+    scope' <- valToScope scope
+    defVar n v' scope'
     return $ ListVal []
 def _ = throwError InvalidArguments
 

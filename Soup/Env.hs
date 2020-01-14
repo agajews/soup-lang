@@ -93,7 +93,7 @@ setVar n v = do
     -- trace (intercalate "\n" $ map show $ Map.toList globalEnv) $ return ()
     case setVar' (reverse scope) globalEnv of
         Just globalEnv' -> putEnv $ Env m scope (EnvMap globalEnv')
-        Nothing         -> defVar n v 0
+        Nothing         -> defVar n v scope
     where
         setVar' (x:xs) env = case setVar' xs (extractEnv env x) of
             Just env' -> Just $ insertEnv env' x env
@@ -102,11 +102,10 @@ setVar n v = do
             Just _  -> Just $ Map.insert n (Right v) env
             Nothing -> Nothing
 
-defVar :: Ident -> Value -> Integer -> Eval ()
-defVar n v upstep = do
+defVar :: Ident -> Value -> [Integer] -> Eval ()
+defVar n v context = do
     Env m scope (EnvMap globalEnv) <- getEnv
-    let context = reverse $ drop (fromInteger upstep) scope
-    putEnv $ Env m scope (EnvMap $ defVar' context globalEnv)
+    putEnv $ Env m scope (EnvMap $ defVar' (reverse context) globalEnv)
     where
         defVar' (x:xs) env = insertEnv (defVar' xs $ extractEnv env x) x env
         defVar' [] env     = Map.insert n (Right v) env

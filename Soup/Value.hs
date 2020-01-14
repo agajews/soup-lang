@@ -57,6 +57,16 @@ data Value = StringVal String
            | Variable Ident
            | FuncCall Value [Value]
 
+instance Eq Value where
+    (StringVal x) == (StringVal y) = x == y
+    (IntVal x) == (IntVal y) = x == y
+    (ListVal x) == (ListVal y) = x == y
+    (PrimFunc _ _) == (PrimFunc _ _) = False
+    (Lambda _ _ _) == (Lambda _ _ _) = False
+    (Variable x) == (Variable y) = x == y
+    (FuncCall _ _) == (FuncCall _ _) = False
+    _ == _ = False
+
 newtype Eval a = Eval {
     unwrapEval :: ExceptT InterpError (StateT (Env, DebugZipper) IO) a
 } deriving (Functor,

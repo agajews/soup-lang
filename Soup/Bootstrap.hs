@@ -143,7 +143,7 @@ parseStr = do
     parseString "\""
     logDebug "\""
     s <- takeString
-    logDebug $ s ++ "\""
+    logDebug $ drop 1 (show s)
     return $ StringVal s
     where
         takeString = do
