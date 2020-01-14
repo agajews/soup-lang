@@ -60,7 +60,7 @@ showDebugTree tree = showTree tree where
     showTrees line prev [Tree [] children] = showTrees line prev children
     showTrees _ prev [] = [prev]
     showTrees line prev (t : ts)
-        | startLineno t > line = prev : showTrees line newPrev [t] ++ showAll barPrev
+        | startLineno t > line = prev : showTrees (startLineno t) newPrev [t] ++ showAll barPrev
         | otherwise = showTrees line prev [t] ++ showAll blankPrev
         where
             newPrev = showLineno (startLineno t) 1
