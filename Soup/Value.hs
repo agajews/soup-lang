@@ -76,7 +76,10 @@ data Zipper a = Zipper [a] (Maybe (Zipper a)) [Tree [a]]
 type DebugZipper = Zipper (String, String)
 type DebugTree = Tree [(String, String)]
 
-data Env = Env Integer (Map.Map Ident Value)
+data EnvMap = EnvMap (Map.Map Ident (Either EnvMap Value))
+
+-- (global variable count) (local evaluation scope) (the actual env)
+data Env = Env Integer [Integer] EnvMap
     deriving (Show)
 
 instance Show Value where

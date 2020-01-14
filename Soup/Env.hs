@@ -17,26 +17,58 @@ import Control.Monad.State
 import qualified Data.Map as Map
 
 emptyEnv :: Env
-emptyEnv = Env 0 Map.empty
+emptyEnv = Env 0 [] (EnvMap Map.empty)
 
 genIdent :: String -> Eval Ident
 genIdent name = do
-    Env n env <- getEnv
+    Env n scope env <- getEnv
     let n' = n + 1
-    putEnv $ Env n' env
+    putEnv $ Env n' scope env
     return $ Ident name n'
+
+pushScope :: Eval ()
+pushScope = do
+    Env n scope env <- getEnv
+    let n' = n + 1
+    putEnv $ Env n' (n' : scope) (Map.insert n' Map.empty env)
+
+getEnvs :: Eval [EnvMap]
+getEnvs = do
+    Env _ scope env <- getEnv
+    return $ getEnvs' scope
+    where
+        getEnvs' (x:xs) = (next Map.! x) : rest where
+            (next : rest) = getEnvs' xs
+        getEnvs' [] = [env]
 
 getVar :: Ident -> Eval Value
 getVar n = do
-    Env _ env <- getEnv
-    case Map.lookup n env of
-        Just v  -> return v
-        Nothing -> throwError (UnboundVariable n)
+    envs <- getEnvs
+    getVar' envs
+    where
+        getVar' (e:es) = case Map.lookup n e of
+            Just v  -> return v
+            Nothing -> getVar' es
+        getVar' [] = throwError (UnboundVariable n)
 
 setVar :: Ident -> Value -> Eval ()
 setVar n v = do
-    Env m env <- getEnv
-    putEnv $ Env m (Map.insert n v env)
+    Env m scope globalEnv <- getEnv
+    let scope' = reverse scope
+    case setVar' scope' globalEnv of
+        Just globalEnv' -> putEnv Env m scope globalEnv'
+        Nothing         -> putEnv Env m scope (defVar scope' globalEnv)
+
+    where
+        setVar' (x:xs) env = case setVar' xs (env Map.! x) of
+            Just env' -> Just $ Map.insert x env' env
+            Nothing   -> setVar' [] env
+        setVar' [] env = case Map.lookup n env of
+            Just _  -> Just $ Map.insert n v env
+            Nothing -> Nothing
+
+        defVar (x:xs) env = defVar xs (env Map.! x)
+        defVar [] env     = Map.insert n v env
 
 modifyVar :: Ident -> (Value -> Eval Value) -> Eval ()
 modifyVar n f = do
