@@ -125,7 +125,12 @@ parseRun pexp = do
     expr <- parseType pexp
     parseString ")"
     logDebug ")"
-    liftEval $ eval expr
+    liftEval $ do
+        scope <- getScope
+        setScope []
+        res <- eval expr
+        setScope scope
+        return res
 
 parseInt :: Parser Value
 parseInt = do

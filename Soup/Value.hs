@@ -21,7 +21,7 @@ import Control.Monad.State
 import Data.List
 import qualified Data.Map as Map
 
-data InterpError = UnboundVariable Ident
+data InterpError = UnboundVariable Ident [Integer]
                  | NotAVariable Value
                  | NotAFunction Value
                  | MismatchedArgs

@@ -125,8 +125,20 @@ listTail [ListVal (_:xs)] = return $ ListVal xs
 listTail _                = throwError InvalidArguments
 
 evalFun :: [Value] -> Eval Value
-evalFun [v] = eval v
-evalFun _   = throwError InvalidArguments
+evalFun [ListVal scope, v] = do
+    callerScope <- getScope
+    scope' <- valToScope scope
+    setScope scope'
+    res <- eval v
+    setScope callerScope
+    return res
+    where
+        valToScope (IntVal x : xs) = do
+            rest <- valToScope xs
+            return (x : rest)
+        valToScope [] = return []
+        valToScope _ = throwError InvalidArguments
+evalFun _          = throwError InvalidArguments
 
 startsWith :: [Value] -> Eval Value
 startsWith [StringVal s, StringVal m] = return $ if isPrefixOf m s
@@ -188,12 +200,12 @@ ifFun _ = throwError InvalidArguments
 
 apply :: [Value] -> Eval Value
 apply (f:args) = do
-    prescope <- getScope
-    traceShow ("pre-apply scope", prescope) $ return ()
+    -- prescope <- getScope
+    -- traceShow ("pre-apply scope", prescope) $ return ()
     args' <- mapM eval args
     res <- eval $ FuncCall f args'
-    postscope <- getScope
-    traceShow ("post-apply scope", postscope) $ return ()
+    -- postscope <- getScope
+    -- traceShow ("post-apply scope", postscope) $ return ()
     return res
 apply _ = throwError InvalidArguments
 
@@ -212,5 +224,5 @@ putsFun _             = throwError InvalidArguments
 scopeFun :: [Value] -> Eval Value
 scopeFun [] = do
     s <- getScope
-    return $ ListVal $ map IntVal s
+    return $ scopeToVal s
 scopeFun _ = throwError InvalidArguments

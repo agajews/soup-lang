@@ -21,12 +21,15 @@ eval (FuncCall f args) = do
         PrimFunc _ f'' -> f'' args
         Lambda params defScope body -> do
             callerScope <- getScope
+            -- liftIO $ print $ ("caller scope", f, callerScope)
             pushScope defScope
-            catchError (matchArgs params args) $ \err -> case err of
-                MismatchedArgs -> throwError $ MismatchedArgs' params args
+            let args' = (scopeToVal callerScope) : args
+            catchError (matchArgs params args') $ \err -> case err of
+                MismatchedArgs -> throwError $ MismatchedArgs' params args'
                 _              -> throwError err
             res <- eval body
             setScope callerScope
+            -- liftIO $ print $ ("returning to scope", f, callerScope)
             return res
         _ -> throwError $ NotAFunction f'
 

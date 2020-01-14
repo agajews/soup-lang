@@ -133,8 +133,9 @@ debugFile fname = do
         showEnv (Env _ _ (EnvMap env)) = do
             putStrLn "\n=== FINAL ENV ===\n"
             putStrLn $ showMap 0 env
-        showMap k env = intercalate "\n\n" (map (showVar k) $ Map.toList env)
-        showVar k (Ident name _, Right val)         = (indent k) ++ name ++ ": " ++ show val
-        showVar k (Ident name _, Left (EnvMap env)) =
-            (indent k) ++ name ++ ":\n" ++ showMap (k + 1) env
+        showMap k env = intercalate "\n" (map (showVar k) $ Map.toList env)
+        showVar k (Ident name n, Right val)         =
+            (indent k) ++ name ++ "/" ++ show n ++ ": " ++ show val
+        showVar k (Ident name n, Left (EnvMap env)) =
+            (indent k) ++ name ++ "/" ++ show n ++ ":\n" ++ showMap (k + 1) env
         indent k = replicate (2 * k) ' '

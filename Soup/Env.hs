@@ -11,6 +11,7 @@ module Soup.Env (
     pushScope,
     getScope,
     setScope,
+    scopeToVal,
 ) where
 
 import Soup.Value
@@ -76,7 +77,7 @@ getVar n = do
     -- trace (intercalate "\n" $ map show $ Map.toList globalEnv) $ return ()
     case getVar' (reverse scope) globalEnv of
         Just (Right v) -> return v
-        _              -> throwError (UnboundVariable n)
+        _              -> throwError (UnboundVariable n scope)
     where
         getVar' (x:xs) env = case getVar' xs (extractEnv env x) of
             Just v  -> Just v
@@ -123,3 +124,6 @@ putEnv :: Env -> Eval ()
 putEnv env = do
     (_, debugTree) <- get
     put (env, debugTree)
+
+scopeToVal :: [Integer] -> Value
+scopeToVal scope = ListVal $ map IntVal scope
