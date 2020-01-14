@@ -5,16 +5,25 @@ module Soup.Env (
     getVar,
     modifyVar,
     setVar,
-    deleteVar,
     getEnv,
     putEnv,
+    pushScope,
+    getScope,
+    setScope,
 ) where
 
 import Soup.Value
 
 import Control.Monad.Except
 import Control.Monad.State
+
+import Data.List
+
 import qualified Data.Map as Map
+
+import Debug.Trace
+
+type EnvMap' = Map.Map Ident (Either EnvMap Value)
 
 emptyEnv :: Env
 emptyEnv = Env 0 [] (EnvMap Map.empty)
@@ -26,60 +35,80 @@ genIdent name = do
     putEnv $ Env n' scope env
     return $ Ident name n'
 
-pushScope :: Eval ()
-pushScope = do
-    Env n scope env <- getEnv
-    let n' = n + 1
-    putEnv $ Env n' (n' : scope) (Map.insert n' Map.empty env)
+extractEnv :: EnvMap' -> Integer -> EnvMap'
+extractEnv env x = case Map.lookup (Ident "#scope" x) env of
+    Just (Left (EnvMap env')) -> env'
+    _                         -> traceShow ("failed with env", x, env) undefined
 
-getEnvs :: Eval [EnvMap]
-getEnvs = do
-    Env _ scope env <- getEnv
-    return $ getEnvs' scope
+insertEnv :: EnvMap' -> Integer -> EnvMap' -> EnvMap'
+insertEnv env' x env = Map.insert (Ident "#scope" x) (Left $ EnvMap env') env
+
+pushScope :: [Integer] -> Eval ()
+pushScope context = do
+    -- trace "\n" $ return ()
+    -- traceShow ("pushing scope", context) $ return ()
+    Env n _ (EnvMap globalEnv) <- getEnv
+    let n' = n + 1
+    let env' = pushScope' (reverse context) n' globalEnv
+    -- traceShow ("created env", env') $ return ()
+    putEnv $ Env n' (n' : context) (EnvMap env')
     where
-        getEnvs' (x:xs) = (next Map.! x) : rest where
-            (next : rest) = getEnvs' xs
-        getEnvs' [] = [env]
+        pushScope' (x:xs) n' env = insertEnv (pushScope' xs n' (extractEnv env x)) x env
+        pushScope' [] n' env     = insertEnv Map.empty n' env
+
+getScope :: Eval [Integer]
+getScope = do
+    Env _ scope _ <- getEnv
+    return scope
+
+setScope :: [Integer] -> Eval ()
+setScope newScope = do
+    Env n _ env <- getEnv
+    putEnv $ Env n newScope env
 
 getVar :: Ident -> Eval Value
 getVar n = do
-    envs <- getEnvs
-    getVar' envs
+    -- trace "\n" $ return ()
+    -- traceShow ("getting", n) $ return ()
+    Env _ scope (EnvMap globalEnv) <- getEnv
+    -- traceShow scope $ return ()
+    -- trace (intercalate "\n" $ map show $ Map.toList globalEnv) $ return ()
+    case getVar' (reverse scope) globalEnv of
+        Just (Right v) -> return v
+        _              -> throwError (UnboundVariable n)
     where
-        getVar' (e:es) = case Map.lookup n e of
-            Just v  -> return v
-            Nothing -> getVar' es
-        getVar' [] = throwError (UnboundVariable n)
+        getVar' (x:xs) env = case getVar' xs (extractEnv env x) of
+            Just v  -> Just v
+            Nothing -> getVar' [] env
+        getVar' [] env = Map.lookup n env
 
 setVar :: Ident -> Value -> Eval ()
 setVar n v = do
-    Env m scope globalEnv <- getEnv
+    -- trace "\n" $ return ()
+    -- traceShow ("setting", n, v) $ return ()
+    Env m scope (EnvMap globalEnv) <- getEnv
     let scope' = reverse scope
+    -- traceShow scope $ return ()
+    -- trace (intercalate "\n" $ map show $ Map.toList globalEnv) $ return ()
     case setVar' scope' globalEnv of
-        Just globalEnv' -> putEnv Env m scope globalEnv'
-        Nothing         -> putEnv Env m scope (defVar scope' globalEnv)
-
+        Just globalEnv' -> putEnv $ Env m scope (EnvMap globalEnv')
+        Nothing         -> putEnv $ Env m scope (EnvMap $ defVar scope' globalEnv)
     where
-        setVar' (x:xs) env = case setVar' xs (env Map.! x) of
-            Just env' -> Just $ Map.insert x env' env
+        setVar' (x:xs) env = case setVar' xs (extractEnv env x) of
+            Just env' -> Just $ insertEnv env' x env
             Nothing   -> setVar' [] env
         setVar' [] env = case Map.lookup n env of
-            Just _  -> Just $ Map.insert n v env
+            Just _  -> Just $ Map.insert n (Right v) env
             Nothing -> Nothing
 
-        defVar (x:xs) env = defVar xs (env Map.! x)
-        defVar [] env     = Map.insert n v env
+        defVar (x:xs) env = insertEnv (defVar xs $ extractEnv env x) x env
+        defVar [] env     = Map.insert n (Right v) env
 
 modifyVar :: Ident -> (Value -> Eval Value) -> Eval ()
 modifyVar n f = do
     v <- getVar n
     v' <- f v
     setVar n v'
-
-deleteVar :: Ident -> Eval ()
-deleteVar n = do
-    Env m env <- getEnv
-    putEnv $ Env m (Map.delete n env)
 
 getEnv :: Eval Env
 getEnv = get >>= return . fst

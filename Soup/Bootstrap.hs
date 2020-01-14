@@ -84,7 +84,12 @@ lambdaParser pexp = do
 
     logDebug ")"
 
-    return $ Lambda paramIdents body
+    return $ FuncCall (PrimFunc "lambda-builder" $ lambdaBuilder paramIdents body) []
+
+lambdaBuilder :: [Ident] -> Value -> [Value] -> Eval Value
+lambdaBuilder paramIdents body _ = do
+    scope <- getScope
+    return $ Lambda paramIdents scope body
 
 pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
 pushRules names ps l@(ListVal _) = do

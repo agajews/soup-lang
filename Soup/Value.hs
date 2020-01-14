@@ -7,6 +7,7 @@ module Soup.Value (
     Value(..),
     Eval(..),
     Env(..),
+    EnvMap(..),
     InterpError(..),
     DebugTree,
     DebugZipper,
@@ -52,7 +53,7 @@ data Value = StringVal String
            | IntVal Integer
            | ListVal [Value]
            | PrimFunc String ([Value] -> Eval Value)
-           | Lambda [Ident] Value
+           | Lambda [Ident] [Integer] Value
            | Variable Ident
            | FuncCall Value [Value]
 
@@ -77,6 +78,7 @@ type DebugZipper = Zipper (String, String)
 type DebugTree = Tree [(String, String)]
 
 data EnvMap = EnvMap (Map.Map Ident (Either EnvMap Value))
+    deriving (Show)
 
 -- (global variable count) (local evaluation scope) (the actual env)
 data Env = Env Integer [Integer] EnvMap
@@ -89,7 +91,7 @@ instance Show Value where
         then "[]"
         else "[" ++ intercalate " " (map show l) ++ "]"
     show (PrimFunc name _) = name
-    show (Lambda ps b) = "(/\\ " ++ intercalate " " (map identName ps) ++ " . " ++ show b ++ ")"
+    show (Lambda ps _ b) = "(/\\ " ++ intercalate " " (map identName ps) ++ " . " ++ show b ++ ")"
     show (Variable (Ident name _)) = "'" ++ name
     show (FuncCall v args) = if null args
         then "(" ++ show v ++ ")"

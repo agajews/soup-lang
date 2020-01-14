@@ -19,8 +19,6 @@ import Control.Monad.State
 import Data.Function
 import Data.List
 
-import qualified Data.Map as Map
-
 import Text.Printf
 
 runEval :: (Env, DebugZipper) -> Eval a ->
@@ -118,19 +116,19 @@ debugFile fname = do
     file <- readFile fname
     parsing <- parseStr' file
     case parsing of
-        Right (vals, tree, env) -> do
+        Right (vals, tree, _) -> do
             print (ListVal vals)
-            showEnv env
+            -- showEnv env
             showTree tree
-        Left (err, tree, env) -> do
+        Left (err, tree, _) -> do
             putStrLn $ "Error: " ++ show err
-            showEnv env
+            -- showEnv env
             showTree tree
     where
         showTree tree = do
             putStr "=== DEBUG OUTPUT ==="
             putStrLn $ showDebugTree tree
-        showEnv (Env _ env) = do
-            putStrLn "=== FINAL ENV ==="
-            putStrLn $ intercalate "\n\n" (map showVar $ Map.toList env)
-        showVar (Ident name _, val) = name ++ ": " ++ show val
+        -- showEnv (Env _ env) = do
+        --     putStrLn "=== FINAL ENV ==="
+        --     putStrLn $ intercalate "\n\n" (map showVar $ Map.toList env)
+        -- showVar (Ident name _, val) = name ++ ": " ++ show val
