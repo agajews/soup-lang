@@ -85,7 +85,9 @@ data Env = Env Integer [Integer] EnvMap
     deriving (Show)
 
 instance Show Value where
-    show (StringVal x) = show x
+    show (StringVal x)
+        | length x > 30 = show $ take 30 x ++ "\\..."
+        | otherwise = show x
     show (IntVal x) = show x
     show (ListVal l) = if null l
         then "[]"
