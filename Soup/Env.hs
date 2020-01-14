@@ -19,8 +19,6 @@ import Soup.Value
 import Control.Monad.Except
 import Control.Monad.State
 
-import Data.List
-
 import qualified Data.Map as Map
 
 import Debug.Trace

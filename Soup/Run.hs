@@ -23,6 +23,9 @@ import qualified Data.Map as Map
 
 import Text.Printf
 
+shouldShowEnv :: Bool
+shouldShowEnv = False
+
 runEval :: (Env, DebugZipper) -> Eval a ->
     IO (Either (InterpError, DebugTree, Env) (a, DebugTree, Env))
 runEval (initEnv, initDebug) x = do
@@ -120,11 +123,11 @@ debugFile fname = do
     case parsing of
         Right (vals, tree, env) -> do
             print (ListVal vals)
-            showEnv env
+            when shouldShowEnv $ showEnv env
             showTree tree
         Left (err, tree, env) -> do
             putStrLn $ "Error: " ++ show err
-            showEnv env
+            when shouldShowEnv $ showEnv env
             showTree tree
     where
         showTree tree = do

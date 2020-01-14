@@ -15,8 +15,6 @@ import Control.Monad.Except
 import Data.Char
 import Data.List
 
-import Debug.Trace
-
 builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
             function "-" $ intBinOp (-),
@@ -115,8 +113,8 @@ spanFun [predicate, StringVal s] = do
 spanFun _ = throwError InvalidArguments
 
 emptyStr :: [Value] -> Eval Value
-emptyStr [StringVal ""] = return $ ListVal []
-emptyStr [StringVal s]  = return $ StringVal s
+emptyStr [StringVal ""] = return $ StringVal ""
+emptyStr [StringVal _]  = return $ ListVal []
 emptyStr _              = throwError InvalidArguments
 
 list :: [Value] -> Eval Value
@@ -173,6 +171,7 @@ elemFun :: [Value] -> Eval Value
 elemFun [ListVal l, x] = return $ case x `elem` l of
     True  -> x
     False -> ListVal []
+elemFun _ = throwError InvalidArguments
 
 strToList :: [Value] -> Eval Value
 strToList [StringVal s] = return $ ListVal $ map (StringVal . (:[])) s
@@ -247,6 +246,7 @@ orFun (x:xs) = case x of
     _          -> return x
 
 andFun :: [Value] -> Eval Value
+andFun [] = return $ ListVal []
 andFun [x] = return x
 andFun (x:xs) = case x of
     ListVal [] -> return $ ListVal []

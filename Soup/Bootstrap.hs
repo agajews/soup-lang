@@ -19,13 +19,13 @@ import qualified Data.Map as Map
 initType :: Eval Value
 initType = do
     pexpType <- genIdent "pexp"
-    let pexpFun = parserToVal "name:pexp" $ pexpParser pexpType
+    let pexpFun = parserToVal "'pexp" $ pexpParser pexpType
     let lambdaFun = parserToVal "lambda" $ lambdaParser pexpType
     let funcCallFun = parserToVal "func-call" $ parseFuncCall pexpType
     let runFun = parserToVal "run" $ parseRun pexpType
 
     topType <- genIdent "top"
-    let topFun = parserToVal "name:top" $ topTypeParser topType
+    let topFun = parserToVal "'top" $ topTypeParser topType
 
     let intFun = parserToVal "int" parseInt
     let strFun = parserToVal "str" parseStr
