@@ -14,6 +14,8 @@ import Control.Monad.Except
 
 import Data.List
 
+import Debug.Trace
+
 builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
             function "-" $ intBinOp (-),
@@ -36,7 +38,10 @@ builtins = [function "+" $ intBinOp (+),
             function "list->str" listToStr,
             function "log-parser" logParserFun,
             function "print" printFun,
+            function "puts" putsFun,
+            function "scope" scopeFun,
             macro "set!" set,
+            macro "def!" def,
             macro "if" ifFun,
             macro "apply" apply,
             macro "quote" quote]
@@ -166,6 +171,13 @@ set [Variable n, v] = do
     return $ ListVal []
 set _ = throwError InvalidArguments
 
+def :: [Value] -> Eval Value
+def [Variable n, v, IntVal k] = do
+    v' <- eval v
+    defVar n v' k
+    return $ ListVal []
+def _ = throwError InvalidArguments
+
 ifFun :: [Value] -> Eval Value
 ifFun [cond, thenExpr, elseExpr] = do
     b <- eval cond
@@ -176,8 +188,13 @@ ifFun _ = throwError InvalidArguments
 
 apply :: [Value] -> Eval Value
 apply (f:args) = do
+    prescope <- getScope
+    traceShow ("pre-apply scope", prescope) $ return ()
     args' <- mapM eval args
-    eval $ FuncCall f args'
+    res <- eval $ FuncCall f args'
+    postscope <- getScope
+    traceShow ("post-apply scope", postscope) $ return ()
+    return res
 apply _ = throwError InvalidArguments
 
 quote :: [Value] -> Eval Value
@@ -185,5 +202,15 @@ quote [v] = return v
 quote _   = throwError InvalidArguments
 
 printFun :: [Value] -> Eval Value
-printFun [v] = liftIO $ print v >> return v
+printFun [v] = liftIO (print v) >> return v
 printFun _   = throwError InvalidArguments
+
+putsFun :: [Value] -> Eval Value
+putsFun [StringVal s] = liftIO (putStrLn s) >> return (StringVal s)
+putsFun _             = throwError InvalidArguments
+
+scopeFun :: [Value] -> Eval Value
+scopeFun [] = do
+    s <- getScope
+    return $ ListVal $ map IntVal s
+scopeFun _ = throwError InvalidArguments

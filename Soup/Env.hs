@@ -5,6 +5,7 @@ module Soup.Env (
     getVar,
     modifyVar,
     setVar,
+    defVar,
     getEnv,
     putEnv,
     pushScope,
@@ -100,10 +101,11 @@ setVar n v = do
             Just _  -> Just $ Map.insert n (Right v) env
             Nothing -> Nothing
 
-defVar :: Ident -> Value -> Int -> Eval ()
+defVar :: Ident -> Value -> Integer -> Eval ()
 defVar n v upstep = do
     Env m scope (EnvMap globalEnv) <- getEnv
-    putEnv $ Env m scope (EnvMap $ defVar' (reverse $ drop upstep scope) globalEnv)
+    let context = reverse $ drop (fromInteger upstep) scope
+    putEnv $ Env m scope (EnvMap $ defVar' context globalEnv)
     where
         defVar' (x:xs) env = insertEnv (defVar' xs $ extractEnv env x) x env
         defVar' [] env     = Map.insert n (Right v) env
