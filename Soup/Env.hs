@@ -87,12 +87,11 @@ setVar n v = do
     -- trace "\n" $ return ()
     -- traceShow ("setting", n, v) $ return ()
     Env m scope (EnvMap globalEnv) <- getEnv
-    let scope' = reverse scope
     -- traceShow scope $ return ()
     -- trace (intercalate "\n" $ map show $ Map.toList globalEnv) $ return ()
-    case setVar' scope' globalEnv of
+    case setVar' (reverse scope) globalEnv of
         Just globalEnv' -> putEnv $ Env m scope (EnvMap globalEnv')
-        Nothing         -> putEnv $ Env m scope (EnvMap $ defVar scope' globalEnv)
+        Nothing         -> defVar n v 0
     where
         setVar' (x:xs) env = case setVar' xs (extractEnv env x) of
             Just env' -> Just $ insertEnv env' x env
@@ -101,8 +100,13 @@ setVar n v = do
             Just _  -> Just $ Map.insert n (Right v) env
             Nothing -> Nothing
 
-        defVar (x:xs) env = insertEnv (defVar xs $ extractEnv env x) x env
-        defVar [] env     = Map.insert n (Right v) env
+defVar :: Ident -> Value -> Int -> Eval ()
+defVar n v upstep = do
+    Env m scope (EnvMap globalEnv) <- getEnv
+    putEnv $ Env m scope (EnvMap $ defVar' (reverse $ drop upstep scope) globalEnv)
+    where
+        defVar' (x:xs) env = insertEnv (defVar' xs $ extractEnv env x) x env
+        defVar' [] env     = Map.insert n (Right v) env
 
 modifyVar :: Ident -> (Value -> Eval Value) -> Eval ()
 modifyVar n f = do
