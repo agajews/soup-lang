@@ -14,21 +14,24 @@ import Soup.Parser
 import Soup.Value
 
 import Control.Monad.Except
-import Control.Monad.Identity
 import Control.Monad.State
 
 import Data.Function
 import Data.List
 
+import qualified Data.Map as Map
+
 import Text.Printf
 
-runEval :: (Env, DebugZipper) -> Eval a -> Either (InterpError, DebugTree) (a, DebugTree, Env)
-runEval (initEnv, initDebug) x = case unwrapped of
-    (Right y, (env, debugZip)) -> Right (y, rootTree debugZip, env)
-    (Left err, (_, debugZip))  -> Left (err, rootTree debugZip)
+runEval :: (Env, DebugZipper) -> Eval a ->
+    IO (Either (InterpError, DebugTree, Env) (a, DebugTree, Env))
+runEval (initEnv, initDebug) x = do
+    contents <- unwrapped
+    return $ case contents of
+        (Right y, (env, debugZip))  -> Right (y, rootTree debugZip, env)
+        (Left err, (env, debugZip)) -> Left (err, rootTree debugZip, env)
     where
-        unwrapped = runIdentity (runStateT (runExceptT (unwrapEval x))
-                                           (initEnv, initDebug))
+        unwrapped = runStateT (runExceptT (unwrapEval x)) (initEnv, initDebug)
 
 showDebugTree :: DebugTree -> String
 showDebugTree tree = showTree tree where
@@ -78,7 +81,7 @@ showDebugTree tree = showTree tree where
     program (Tree [(_, p)] _) = p
     program _                 = undefined
 
-parseStr' :: String -> Either (InterpError, DebugTree) ([Value], DebugTree, Env)
+parseStr' :: String -> IO (Either (InterpError, DebugTree, Env) ([Value], DebugTree, Env))
 parseStr' s = runEval (emptyEnv, emptyTree) $ do
     t <- initType
     logParser "ROOT" s
@@ -93,28 +96,41 @@ finalContinuation v s = case s of
     "" -> logParser "SUCCESS" "" >> return [v]
     _  -> return []
 
-parseStr :: String -> Either (InterpError, DebugTree) [Value]
+parseStr :: String -> IO (Either (InterpError, DebugTree, Env) [Value])
 parseStr s = do
-    (val, _, _) <- parseStr' s
-    return val
+    content <- parseStr' s
+    return $ do
+        (val, _, _) <- content
+        return val
 
-runStr :: String -> Either (InterpError, DebugTree) Value
+runStr :: String -> IO (Either (InterpError, DebugTree, Env) Value)
 runStr s = do
-    (exprs, _, env) <- parseStr' s
-    (vals, _, _) <- runEval (env, emptyTree) $ mapM eval exprs
-    return $ last vals
+    content <- parseStr' s
+    content' <- case content of
+        Right (exprs, _, env) -> runEval (env, emptyTree) $ mapM eval exprs
+        Left err              -> return $ Left err
+    return $ case content' of
+        Right (vals, _, _) -> Right $ last vals
+        Left err           -> Left err
 
 debugFile :: String -> IO ()
 debugFile fname = do
     file <- readFile fname
-    case parseStr' file of
-        Right (vals, tree, _) -> do
+    parsing <- parseStr' file
+    case parsing of
+        Right (vals, tree, env) -> do
             print (ListVal vals)
             showTree tree
-        Left (err, tree) -> do
+            showEnv env
+        Left (err, tree, env) -> do
             putStrLn $ "Error: " ++ show err
             showTree tree
+            showEnv env
     where
         showTree tree = do
             putStr "=== DEBUG OUTPUT ==="
             putStrLn $ showDebugTree tree
+        showEnv (Env _ env) = do
+            putStrLn "=== FINAL ENV ==="
+            putStrLn $ intercalate "\n\n" (map showVar $ Map.toList env)
+        showVar (Ident name _, val) = name ++ ": " ++ show val

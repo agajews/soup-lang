@@ -42,10 +42,3 @@
         (list)
         (apply (eval c) (head l) (head (tail l)))))
     (span (eval pred) (eval s))))))
-
-(run (define-var "put-before!" (lambda (l x)
-    (apply set! l (cons x (eval l))))))
-
-(run (define-var "parse-ws" (lambda (s c)
-    (pexp put-before!))))
-

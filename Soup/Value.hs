@@ -15,7 +15,6 @@ module Soup.Value (
 ) where
 
 import Control.Monad.Except
-import Control.Monad.Identity
 import Control.Monad.State
 
 import Data.List
@@ -58,10 +57,11 @@ data Value = StringVal String
            | FuncCall Value [Value]
 
 newtype Eval a = Eval {
-    unwrapEval :: ExceptT InterpError (StateT (Env, DebugZipper) Identity) a
+    unwrapEval :: ExceptT InterpError (StateT (Env, DebugZipper) IO) a
 } deriving (Functor,
             Applicative,
             Monad,
+            MonadIO,
             MonadError InterpError,
             MonadState (Env, DebugZipper))
 
@@ -86,7 +86,7 @@ instance Show Value where
         then "[]"
         else "[" ++ intercalate " " (map show l) ++ "]"
     show (PrimFunc name _) = name
-    show (Lambda ps b) = "(/\\ " ++ intercalate " " (map identName ps) ++ show b ++ ")"
+    show (Lambda ps b) = "(/\\ " ++ intercalate " " (map identName ps) ++ " . " ++ show b ++ ")"
     show (Variable (Ident name _)) = "'" ++ name
     show (FuncCall v args) = if null args
         then "(" ++ show v ++ ")"
