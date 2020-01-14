@@ -38,12 +38,12 @@ genIdent name = do
     return $ Ident name n'
 
 extractEnv :: EnvMap' -> Integer -> EnvMap'
-extractEnv env x = case Map.lookup (Ident "#scope" x) env of
+extractEnv env x = case Map.lookup (Ident "#" x) env of
     Just (Left (EnvMap env')) -> env'
     _                         -> traceShow ("failed with env", x, env) undefined
 
 insertEnv :: EnvMap' -> Integer -> EnvMap' -> EnvMap'
-insertEnv env' x env = Map.insert (Ident "#scope" x) (Left $ EnvMap env') env
+insertEnv env' x env = Map.insert (Ident "#" x) (Left $ EnvMap env') env
 
 pushScope :: [Integer] -> Eval ()
 pushScope context = do

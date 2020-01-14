@@ -126,10 +126,10 @@ parseRun pexp = do
     parseString ")"
     logDebug ")"
     liftEval $ do
-        scope <- getScope
-        setScope []
+        -- scope <- getScope
+        -- setScope []
         res <- eval expr
-        setScope scope
+        -- setScope scope
         return res
 
 parseInt :: Parser Value

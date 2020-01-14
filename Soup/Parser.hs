@@ -47,7 +47,7 @@ liftEval m = Parser $ \s c -> do
     c x s
 
 parserToVal :: String -> Parser Value -> Value
-parserToVal name p = PrimFunc ("parser:" ++ name) $ \args -> do
+parserToVal name p = PrimFunc ("%" ++ name) $ \args -> do
     args' <- mapM eval args
     case args' of
         [StringVal s, c] -> do
@@ -66,7 +66,7 @@ contToVal name c = PrimFunc contname $ \args -> do
             l <- c v s
             return $ ListVal l
         _ -> throwError $ InvalidArguments' contname args
-    where contname = "cont:" ++ name
+    where contname = "~" ++ name
 
 parserFail :: Parser a
 parserFail = Parser $ \_ _ -> return []
@@ -74,7 +74,7 @@ parserFail = Parser $ \_ _ -> return []
 parseType :: Ident -> Parser Value
 parseType n = Parser $ \s c -> do
     rs <- eval (Variable n)
-    parse s [(rs, contToVal "internal" c)]
+    parse s [(rs, contToVal "" c)]
 
 parseString :: String -> Parser ()
 parseString m = Parser $ \s c -> if isPrefixOf m s
