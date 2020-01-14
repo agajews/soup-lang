@@ -35,6 +35,7 @@ builtins = [function "+" $ intBinOp (+),
             function "str->list" strToList,
             function "list->str" listToStr,
             function "log-parser" logParserFun,
+            function "print" printFun,
             macro "set!" set,
             macro "if" ifFun,
             macro "apply" apply,
@@ -182,3 +183,7 @@ apply _ = throwError InvalidArguments
 quote :: [Value] -> Eval Value
 quote [v] = return v
 quote _   = throwError InvalidArguments
+
+printFun :: [Value] -> Eval Value
+printFun [v] = liftIO $ print v >> return v
+printFun _   = throwError InvalidArguments

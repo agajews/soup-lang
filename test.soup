@@ -32,7 +32,10 @@
                 (log-parser (cat "'" name1) s2)
                 (apply c2 var s2))) (eval c) (eval s1)))))
         pexp))
-    (apply set! var val))) (gen-var name1))) name))))
+    (do
+        (apply (lambda (v) (print v)) var)
+        (apply set! var val))))
+    (gen-var name1))) name))))
 
 (run (define-var "prepend!" (lambda (l x)
     (apply set! l (cons x (eval l))))))

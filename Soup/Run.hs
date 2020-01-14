@@ -120,12 +120,12 @@ debugFile fname = do
     case parsing of
         Right (vals, tree, env) -> do
             print (ListVal vals)
-            showTree tree
             showEnv env
+            showTree tree
         Left (err, tree, env) -> do
             putStrLn $ "Error: " ++ show err
-            showTree tree
             showEnv env
+            showTree tree
     where
         showTree tree = do
             putStr "=== DEBUG OUTPUT ==="
