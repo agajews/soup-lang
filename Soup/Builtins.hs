@@ -12,6 +12,7 @@ import Soup.Value
 
 import Control.Monad.Except
 
+import Data.Char
 import Data.List
 
 import Debug.Trace
@@ -41,6 +42,10 @@ builtins = [function "+" $ intBinOp (+),
             function "print" printFun,
             function "puts" putsFun,
             function "scope" scopeFun,
+            function "or" orFun,
+            function "and" andFun,
+            function "is-alpha-num" alphaNumFun,
+            function "is-digit" digitFun,
             macro "set!" set,
             macro "def!" def,
             macro "if" ifFun,
@@ -234,3 +239,27 @@ scopeFun [] = do
     s <- getScope
     return $ scopeToVal s
 scopeFun _ = throwError InvalidArguments
+
+orFun :: [Value] -> Eval Value
+orFun [] = return $ ListVal []
+orFun (x:xs) = case x of
+    ListVal [] -> orFun xs
+    _          -> return x
+
+andFun :: [Value] -> Eval Value
+andFun [x] = return x
+andFun (x:xs) = case x of
+    ListVal [] -> return $ ListVal []
+    _          -> andFun xs
+
+alphaNumFun :: [Value] -> Eval Value
+alphaNumFun [StringVal [c]] = case isAlphaNum c of
+    True  -> return $ StringVal [c]
+    False -> return $ ListVal []
+alphaNumFun _ = throwError InvalidArguments
+
+digitFun :: [Value] -> Eval Value
+digitFun [StringVal [c]] = case isDigit c of
+    True  -> return $ StringVal [c]
+    False -> return $ ListVal []
+digitFun _ = throwError InvalidArguments

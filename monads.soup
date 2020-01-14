@@ -61,7 +61,7 @@
     (parse-ws (eval s) (lambda (_ s)
     (parse-ident (eval s) (lambda (name s)
     (parse-ws (eval s) (lambda (_ s)
-    (parse (pexp (lambda (val s)
+    (parse (list pexp (lambda (val s)
     (parse-str ")" (eval s) (lambda (_ s) (apply
         (lambda (var val) (do
             (prepend! pexp (lambda (s' c')
