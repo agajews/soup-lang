@@ -1,8 +1,8 @@
 module Soup.Run (
     parseStr,
     parseStr',
-    runStr,
     debugFile,
+    runFile,
 ) where
 
 import Soup.Bootstrap
@@ -106,17 +106,17 @@ parseStr s = do
         (val, _, _) <- content
         return val
 
-runStr :: String -> IO (Either (InterpError, DebugTree, Env) Value)
-runStr s = do
-    content <- parseStr' s
-    content' <- case content of
-        Right (exprs, _, env) -> runEval (env, emptyTree) $ mapM eval exprs
-        Left err              -> return $ Left err
-    return $ case content' of
-        Right (vals, _, _) -> Right $ last vals
-        Left err           -> Left err
+-- runStr :: String -> IO (Either (InterpError, DebugTree, Env) Value)
+-- runStr s = do
+--     content <- parseStr' s
+--     content' <- case content of
+--         Right (exprs, _, env) -> runEval (env, emptyTree) $ mapM eval exprs
+--         Left err              -> return $ Left err
+--     return $ case content' of
+--         Right (vals, _, _) -> Right $ last vals
+--         Left err           -> Left err
 
-debugFile :: String -> IO ()
+debugFile :: String -> IO ([Value], Env)
 debugFile fname = do
     file <- readFile fname
     parsing <- parseStr' file
@@ -125,10 +125,12 @@ debugFile fname = do
             print (ListVal vals)
             when shouldShowEnv $ showEnv env
             showTree tree
+            return (vals, env)
         Left (err, tree, env) -> do
             putStrLn $ "Error: " ++ show err
             when shouldShowEnv $ showEnv env
             showTree tree
+            return ([], env)
     where
         showTree tree = do
             putStrLn "\n=== DEBUG OUTPUT ==="
@@ -142,3 +144,11 @@ debugFile fname = do
         showVar k (Ident name n, Left (EnvMap env)) =
             (indent k) ++ name ++ "/" ++ show n ++ ":\n" ++ showMap (k + 1) env
         indent k = replicate (2 * k) ' '
+
+runFile :: String -> IO ()
+runFile fname = do
+    putStrLn "=== PARSING FILE ==="
+    (vals, env) <- debugFile fname
+    putStrLn "\n=== RUNNING FILE ==="
+    _ <- runEval (env, emptyTree) $ mapM eval vals
+    return ()
