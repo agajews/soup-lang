@@ -84,8 +84,8 @@
 (define y (+ x 2))
 (print y)
 
-(define factorial (lambda (@1 n) (apply (lambda (@2 n') (if (> n' 1)
-    (* n' (factorial (- n' 1)))
-    1)) (eval @1 n))))
+(define factorial (fun (n) (if (> n 1)
+    (* n (factorial (- n 1)))
+    1)))
 
 (print (factorial 10))
