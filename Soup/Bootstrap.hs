@@ -63,7 +63,7 @@ lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
-    logDebug "(/\\"
+    logDebug "(lambda\"
 
     parseWS
     parseString "("
@@ -90,6 +90,49 @@ lambdaBuilder :: [Ident] -> Value -> [Value] -> Eval Value
 lambdaBuilder paramIdents body _ = do
     scope <- getScope
     return $ Lambda paramIdents scope body
+
+funParser :: Ident -> Parser Value
+funParser pexp = do
+    parseString "(fun"
+
+    logDebug "(fun"
+
+    parseWS
+    parseString "("
+
+    paramNames <- parseInterspersed' parseIdent parseWS
+    paramIdents <- liftEval $ mapM genIdent paramNames
+    let paramParsers = zipWith literalParser paramNames (map Variable paramIdents)
+
+    parseString ")"
+    logDebug $ (concat $ map (\n -> n ++ " ") paramNames) ++ "."
+    parseWS
+
+    liftEval $ modifyVar pexp (pushRules paramNames paramParsers)
+    body <- parseType pexp
+    liftEval $ modifyVar pexp popRules
+
+    parseString ")"
+
+    logDebug ")"
+
+    return $ FuncCall (PrimFunc "fun-builder" funBuilder) [lambdaBuilder paramIdents body]
+
+funBuilder :: [Ident] -> Value -> [Value] -> Eval Value
+funBuilder paramIdents body _ = do
+    scope <- getScope
+    wrappedIdents <- mapM wrapIdent paramIdents
+    scopeIdent <- genVar "@@"
+    let evalVars = map (evalIdent scopeIdent) wrappedIdents
+    return $ Lambda (scopeIdent : wrappedIdents) scope $
+        FuncCall apply (lambdaBuilder paramIdents body : evalVars)
+    where
+        wrapIdent (Ident name _) = genVar name
+        evalIdent scopeIdent paramIdent = FuncCall evalFun
+
+funBuilder :: [Value] -> Eval Value
+funBuilder [lambda] = FuncCall (PrimFunc
+funBuilder _ = throwError InvalidArguments
 
 pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
 pushRules names ps l@(ListVal _) = do

@@ -2,6 +2,8 @@
 
 module Soup.Builtins (
     builtins,
+    apply,
+    evalFun,
 ) where
 
 import Soup.Debugger
