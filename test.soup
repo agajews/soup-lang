@@ -56,22 +56,29 @@
 
 (run (define-var "parse-ident" (lambda (@1 s c)
     (parse-while
-        (lambda (@2 x) (or (is-alpha-num x) (elem (str->list "~!@#$%^&*-=+_|'<>?") x)))
+        (lambda (@2 x) (do
+            (puts (cat "got x: '" x "'"))
+            (or (is-alpha-num x) (elem (str->list "~!@#$%^&*-=+_|'<>?") x))))
         (eval @1 s)
-        (lambda (@2 name s1) (apply (lambda (@3 c2 name2 s2)
-            (if (and is-digit (str->list name))
+        (lambda (@2 name s1) (apply (lambda (@3 c2 name2 s2) (do
+            (puts "continuing!")
+            (print (all (map is-digit (str->list name))))
+            (if (all (map is-digit (str->list name)))
                 (list)
-                (c2 name2 s2)))
-            c name s1))))))
+                (c2 name2 s2))))
+            (eval @1 c) (eval @2 name) (eval @2 s1)))))))
 
 (run (prepend! pexp (lambda (@1 s c)
     (parse-str "(define" (eval @1 s) (lambda (@2 _ s1) (do
-    (log-parser "(define" s1)
+    (log-parser "(define" (eval @2 s1))
     (parse-ws (eval @2 s1) (lambda (@3 _ s2) (do
-    (log-parser "_" s1)
-    (parse-ident (eval @3 s2) (lambda (@4 name s3)
-    (parse-ws (eval @4 s3) (lambda (@5 _ s4)
-    (parse (eval @5 s4) (pexp (lambda (@6 val s5)
+    (log-parser "_" (eval @3 s2))
+    (parse-ident (eval @3 s2) (lambda (@4 name s3) (do
+    (log-parser (eval @4 name) (eval @4 s3))
+    (parse-ws (eval @4 s3) (lambda (@5 _ s4) (do
+    (log-parser "_" (eval @5 s4))
+    (parse (eval @5 s4) (pexp (lambda (@6 val s5) (do
+    (log-parser (eval @6 val) (eval @6 s5))
     (parse-str ")" (eval @6 s5) (lambda (@7 _ s6) (apply
         (lambda (@8 var val1) (do
             (prepend! pexp (lambda (@9 s' c')
@@ -79,7 +86,7 @@
                 (apply (eval @9 c') var (eval @10 s'1))))))
             (apply (eval @1 c) (quote (apply set! var val)) (eval @7 s6))))
         (gen-var name)
-        (eval @6 val))))))))))))))))))))
+        (eval @6 val)))))))))))))))))))))))
 
 (define x (+ 3 4))
 (run x)

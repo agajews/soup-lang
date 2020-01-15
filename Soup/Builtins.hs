@@ -19,7 +19,6 @@ builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
             function "-" $ intBinOp (-),
             function "*" $ intBinOp (*),
-            function "parse" parseFun,
             function "gen-var" genVar,
             function "do" doFun,
             function "cons" cons,
@@ -42,8 +41,12 @@ builtins = [function "+" $ intBinOp (+),
             function "scope" scopeFun,
             function "or" orFun,
             function "and" andFun,
+            function "all" allFun,
+            function "any" anyFun,
+            function "map" mapFun,
             function "is-alpha-num" alphaNumFun,
             function "is-digit" digitFun,
+            macro "parse" parseMacro,
             macro "set!" set,
             macro "def!" def,
             macro "if" ifFun,
@@ -76,15 +79,6 @@ genVar :: [Value] -> Eval Value
 genVar [StringVal name] = genIdent name >>= return . Variable
 genVar _                = throwError InvalidArguments
 
-parseFun :: [Value] -> Eval Value
-parseFun [StringVal s, ListVal l] = do
-    tuples <- mapM getTuples l
-    parsings <- parse s tuples
-    return $ ListVal parsings
-    where getTuples (FuncCall x [y]) = return (x, y)
-          getTuples _                = throwError InvalidArguments
-parseFun _ = throwError InvalidArguments
-
 doFun :: [Value] -> Eval Value
 doFun args@(_:_) = return $ last args
 doFun _          = throwError InvalidArguments
@@ -94,8 +88,15 @@ cons [v, ListVal l] = return $ ListVal (v:l)
 cons _              = throwError InvalidArguments
 
 cat :: [Value] -> Eval Value
-cat [StringVal x, StringVal y] = return $ StringVal $ x ++ y
-cat _                          = throwError InvalidArguments
+cat args = do
+    strings <- cat' args
+    return $ StringVal $ concat strings
+    where
+        cat' (StringVal s : xs) = do
+            rest <- cat' xs
+            return (s : rest)
+        cat' [] = return []
+        cat' _ = throwError InvalidArguments
 
 spanFun :: [Value] -> Eval Value
 spanFun [predicate, StringVal s] = do
@@ -185,6 +186,59 @@ listToStr v = listToStr' v >>= return . StringVal where
     listToStr' [ListVal []] = return ""
     listToStr' _ = throwError InvalidArguments
 
+printFun :: [Value] -> Eval Value
+printFun [v] = liftIO (print v) >> return v
+printFun _   = throwError InvalidArguments
+
+putsFun :: [Value] -> Eval Value
+putsFun [StringVal s] = liftIO (putStrLn s) >> return (StringVal s)
+putsFun _             = throwError InvalidArguments
+
+scopeFun :: [Value] -> Eval Value
+scopeFun [] = do
+    s <- getScope
+    return $ scopeToVal s
+scopeFun _ = throwError InvalidArguments
+
+orFun :: [Value] -> Eval Value
+orFun [] = return $ ListVal []
+orFun (x:xs) = case x of
+    ListVal [] -> orFun xs
+    _          -> return x
+
+andFun :: [Value] -> Eval Value
+andFun [] = return $ ListVal []
+andFun [x] = return x
+andFun (x:xs) = case x of
+    ListVal [] -> return $ ListVal []
+    _          -> andFun xs
+
+allFun :: [Value] -> Eval Value
+allFun [ListVal l] = andFun l
+allFun _           = throwError InvalidArguments
+
+anyFun :: [Value] -> Eval Value
+anyFun [ListVal l] = orFun l
+anyFun _           = throwError InvalidArguments
+
+mapFun :: [Value] -> Eval Value
+mapFun [f, ListVal l] = do
+    l' <- mapM (\x -> eval $ FuncCall f [x]) l
+    return $ ListVal l'
+mapFun _              = throwError InvalidArguments
+
+alphaNumFun :: [Value] -> Eval Value
+alphaNumFun [StringVal [c]] = case isAlphaNum c of
+    True  -> return $ StringVal [c]
+    False -> return $ ListVal []
+alphaNumFun _ = throwError InvalidArguments
+
+digitFun :: [Value] -> Eval Value
+digitFun [StringVal [c]] = case isDigit c of
+    True  -> return $ StringVal [c]
+    False -> return $ ListVal []
+digitFun _ = throwError InvalidArguments
+
 -- Macros
 
 set :: [Value] -> Eval Value
@@ -225,41 +279,19 @@ quote :: [Value] -> Eval Value
 quote [v] = return v
 quote _   = throwError InvalidArguments
 
-printFun :: [Value] -> Eval Value
-printFun [v] = liftIO (print v) >> return v
-printFun _   = throwError InvalidArguments
-
-putsFun :: [Value] -> Eval Value
-putsFun [StringVal s] = liftIO (putStrLn s) >> return (StringVal s)
-putsFun _             = throwError InvalidArguments
-
-scopeFun :: [Value] -> Eval Value
-scopeFun [] = do
-    s <- getScope
-    return $ scopeToVal s
-scopeFun _ = throwError InvalidArguments
-
-orFun :: [Value] -> Eval Value
-orFun [] = return $ ListVal []
-orFun (x:xs) = case x of
-    ListVal [] -> orFun xs
-    _          -> return x
-
-andFun :: [Value] -> Eval Value
-andFun [] = return $ ListVal []
-andFun [x] = return x
-andFun (x:xs) = case x of
-    ListVal [] -> return $ ListVal []
-    _          -> andFun xs
-
-alphaNumFun :: [Value] -> Eval Value
-alphaNumFun [StringVal [c]] = case isAlphaNum c of
-    True  -> return $ StringVal [c]
-    False -> return $ ListVal []
-alphaNumFun _ = throwError InvalidArguments
-
-digitFun :: [Value] -> Eval Value
-digitFun [StringVal [c]] = case isDigit c of
-    True  -> return $ StringVal [c]
-    False -> return $ ListVal []
-digitFun _ = throwError InvalidArguments
+parseMacro :: [Value] -> Eval Value
+parseMacro (s : pairs) = do
+    s' <- eval s
+    case s' of
+        StringVal s'' -> do
+            pairs' <- mapM getPairs pairs
+            parsings <- parse s'' pairs'
+            return $ ListVal parsings
+        _ -> throwError InvalidArguments
+    where
+        getPairs (FuncCall x [y]) = do
+            x' <- eval x
+            y' <- eval y
+            return (x', y')
+        getPairs _                = throwError InvalidArguments
+parseMacro _ = throwError InvalidArguments
