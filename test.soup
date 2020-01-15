@@ -1,12 +1,11 @@
 (run (set! pexp (cons
-    (apply (lambda (@1 var m)
-        (lambda (@2 s c) (apply (lambda (@3 s1 c1)
-            (if (starts-with s1 m)
+    ((fun (var m)
+        (fun (s c)
+            (if (starts-with s m)
                 (do
-                    (log-parser "'parse-str" s1)
-                    (apply c1 var (drop (length m) s1)))
-                (list)))
-            (eval @2 s) (eval @2 c))))
+                    (log-parser "'parse-str" s)
+                    (apply c var (drop (length m) s)))
+                (list))))
         (gen-var "parse-str") "parse-str")
     pexp)))
 

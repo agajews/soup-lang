@@ -121,7 +121,10 @@ funParser pexp = do
 
     logDebug ")"
 
-    return $ FuncCall (function' "fun-builder" funBuilder) [lambdaBuilder paramIdents body]
+    scopeIdent <- liftEval $ genIdent "@@"
+
+    let funBuilder' = function' "fun-builder" funBuilder
+    return $ FuncCall funBuilder' [lambdaBuilder (scopeIdent : paramIdents) body]
 
 funBuilder :: [Value] -> Eval Value
 funBuilder [l@(Lambda _ _ _)] = return $ function' "fun-wrapper" $ funWrapper l
