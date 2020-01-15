@@ -150,15 +150,18 @@ listTail :: [Value] -> Eval Value
 listTail [ListVal (_:xs)] = return $ ListVal xs
 listTail _                = throwError InvalidArguments
 
-valToScope :: [Value] -> Eval [Integer]
-valToScope (IntVal x : xs) = do
-    rest <- valToScope xs
-    return (x : rest)
-valToScope [] = return []
+valToScope :: Value -> Eval [Integer]
+valToScope (ListVal l) = valToScope' l
+    where
+    valToScope' (IntVal x : xs) = do
+        rest <- valToScope' xs
+        return (x : rest)
+    valToScope' [] = return []
+    valToScope' _ = throwError InvalidArguments
 valToScope _ = throwError InvalidArguments
 
 evalFun :: [Value] -> Eval Value
-evalFun [ListVal scope, v] = do
+evalFun [scope, v] = do
     callerScope <- getScope
     scope' <- valToScope scope
     setScope scope'
@@ -274,9 +277,9 @@ set [Variable n, v] = do
 set _ = throwError InvalidArguments
 
 def :: [Value] -> Eval Value
-def [ListVal scope, Variable n, v] = do
+def [scope, Variable n, v] = do
     v' <- eval v
-    scope' <- valToScope scope
+    scope' <- eval scope >>= valToScope
     defVar n v' scope'
     return $ ListVal []
 def _ = throwError InvalidArguments

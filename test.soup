@@ -9,12 +9,10 @@
         (gen-var "parse-str") "parse-str")
     pexp)))
 
-(run (apply def! (list) (quote parse-str)
-    (lambda (@1 m s c) (apply (lambda (@2 m1 s1 c1)
-        (if (starts-with s1 m1)
-            (apply c1 m1 (drop (length m1) s1))
-            (list)))
-        (eval @1 m) (eval @1 s) (eval @1 c)))))
+(run (def! (list) parse-str (fun (m s c)
+    (if (starts-with s m)
+        (c m (drop (length m) s))
+        (list)))))
 
 (run (set! pexp (cons
     (apply
