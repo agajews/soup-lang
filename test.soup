@@ -84,7 +84,7 @@
 (define y (+ x 2))
 (print y)
 
-(define factorial (fun (n) (if (= n 1)
+(define factorial (fun (n) (if (< n 1)
     1
     (* n (factorial (- n 1))))))
 
