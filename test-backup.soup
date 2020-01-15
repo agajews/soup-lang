@@ -84,6 +84,14 @@
     (gen-var name1))))
     (eval @4 name)))))))))))))
 
+(define catch-fail (lambda (@1 parser fail-parser) (lambda (@2 s c) (apply
+    (lambda @3 s' c')
+    (lambda (@4 res fail-parser')
+        (if res
+            res
+            (fail-parser s c)))
+    ((eval @1 parser) 
+
 (run (prepend! pexp (lambda @1 s c)
     (parse-str "(fun" (eval @1 s) (lambda (@2 _ s1) (do
     (log-parser "(fun" (eval @2 s1))

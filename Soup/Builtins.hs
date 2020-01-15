@@ -2,8 +2,8 @@
 
 module Soup.Builtins (
     builtins,
-    apply,
-    evalFun,
+    function',
+    macro'
 ) where
 
 import Soup.Debugger
@@ -66,8 +66,14 @@ function :: String -> ([Value] -> Eval Value) -> (String, Value)
 function name f = (name, PrimFunc name func) where
     func args = mapM eval args >>= wrapInvalidArgs f name
 
+function' :: String -> ([Value] -> Eval Value) -> Value
+function' name f = snd $ function name f
+
 macro :: String -> ([Value] -> Eval Value) -> (String, Value)
 macro name f = (name, PrimFunc name $ \args -> wrapInvalidArgs f name args)
+
+macro' :: String -> ([Value] -> Eval Value) -> Value
+macro' name f = snd $ macro name f
 
 wrapInvalidArgs :: ([Value] -> Eval Value) -> String -> [Value] -> Eval Value
 wrapInvalidArgs f name args = catchError (f args) $ \err -> case err of

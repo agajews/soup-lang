@@ -21,6 +21,7 @@ initType = do
     pexpType <- genIdent "pexp"
     let pexpFun = parserToVal "'pexp" $ pexpParser pexpType
     let lambdaFun = parserToVal "lambda" $ lambdaParser pexpType
+    let funFun = parserToVal "fun" $ funParser pexpType
     let funcCallFun = parserToVal "func-call" $ parseFuncCall pexpType
     let runFun = parserToVal "run" $ parseRun pexpType
 
@@ -35,6 +36,7 @@ initType = do
         pexpFun,
         topFun,
         lambdaFun,
+        funFun,
         funcCallFun,
         runFun,
         intFun,
@@ -63,7 +65,7 @@ lambdaParser :: Ident -> Parser Value
 lambdaParser pexp = do
     parseString "(lambda"
 
-    logDebug "(lambda\"
+    logDebug "(lambda"
 
     parseWS
     parseString "("
@@ -84,12 +86,15 @@ lambdaParser pexp = do
 
     logDebug ")"
 
-    return $ FuncCall (PrimFunc "lambda-builder" $ lambdaBuilder paramIdents body) []
+    return $ lambdaBuilder paramIdents body
 
-lambdaBuilder :: [Ident] -> Value -> [Value] -> Eval Value
-lambdaBuilder paramIdents body _ = do
-    scope <- getScope
-    return $ Lambda paramIdents scope body
+lambdaBuilder :: [Ident] -> Value -> Value
+lambdaBuilder paramIdents body =
+    FuncCall (macro' "lambda-builder" lambdaBuilder') []
+    where
+        lambdaBuilder' _ = do
+            scope <- getScope
+            return $ Lambda paramIdents scope body
 
 funParser :: Ident -> Parser Value
 funParser pexp = do
@@ -116,23 +121,15 @@ funParser pexp = do
 
     logDebug ")"
 
-    return $ FuncCall (PrimFunc "fun-builder" funBuilder) [lambdaBuilder paramIdents body]
-
-funBuilder :: [Ident] -> Value -> [Value] -> Eval Value
-funBuilder paramIdents body _ = do
-    scope <- getScope
-    wrappedIdents <- mapM wrapIdent paramIdents
-    scopeIdent <- genVar "@@"
-    let evalVars = map (evalIdent scopeIdent) wrappedIdents
-    return $ Lambda (scopeIdent : wrappedIdents) scope $
-        FuncCall apply (lambdaBuilder paramIdents body : evalVars)
-    where
-        wrapIdent (Ident name _) = genVar name
-        evalIdent scopeIdent paramIdent = FuncCall evalFun
+    return $ FuncCall (function' "fun-builder" funBuilder) [lambdaBuilder paramIdents body]
 
 funBuilder :: [Value] -> Eval Value
-funBuilder [lambda] = FuncCall (PrimFunc
-funBuilder _ = throwError InvalidArguments
+funBuilder [l@(Lambda _ _ _)] = return $ function' "fun-wrapper" $ funWrapper l
+funBuilder _                  = throwError InvalidArguments
+
+funWrapper :: Value -> [Value] -> Eval Value
+funWrapper (l@(Lambda _ _ _)) args = eval $ FuncCall l args
+funWrapper _ _                     = throwError InvalidArguments
 
 pushRules :: [String] -> [Parser Value] -> Value -> Eval Value
 pushRules names ps l@(ListVal _) = do
