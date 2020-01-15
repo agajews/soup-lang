@@ -82,12 +82,13 @@
         (lambda (@8 var val1) (do
             (log-parser ")" (eval @6 s6))
             (prepend! pexp (lambda (@9 s' c')
-                (parse-str name1 (eval @9 s') (lambda (@10 _ s'1)
-                (apply (eval @9 c') var (eval @10 s'1))))))
-            (apply (eval @1 c) (quote (apply set! var val)) (eval @7 s6))))
+                (parse-str name1 (eval @9 s') (lambda (@10 _ s'1) (do
+                (log-parser name1 (eval @10 s'1))
+                (apply (eval @9 c') var (eval @10 s'1)))))))
+            (apply (eval @1 c) (. set! var val) (eval @7 s6))))
         (gen-var name1)
         (eval @6 val))))))))))))
         (eval @4 name)))))))))))))
 
 (define x (+ 3 4))
-(run x)
+(print x)

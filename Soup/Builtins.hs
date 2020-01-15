@@ -46,6 +46,7 @@ builtins = [function "+" $ intBinOp (+),
             function "map" mapFun,
             function "is-alpha-num" alphaNumFun,
             function "is-digit" digitFun,
+            function "." funcCallFun,
             macro "parse" parseMacro,
             macro "set!" set,
             macro "def!" def,
@@ -238,6 +239,10 @@ digitFun [StringVal [c]] = case isDigit c of
     True  -> return $ StringVal [c]
     False -> return $ ListVal []
 digitFun _ = throwError InvalidArguments
+
+funcCallFun :: [Value] -> Eval Value
+funcCallFun (f : args) = return $ FuncCall f args
+funcCallFun _          = throwError InvalidArguments
 
 -- Macros
 
