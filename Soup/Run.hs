@@ -122,6 +122,7 @@ debugFile fname = do
     parsing <- parseStr' file
     case parsing of
         Right (vals, tree, env) -> do
+            putStrLn "=== PARSED EXPRESSIONS ==="
             putStrLn $ intercalate "\n" (map show vals)
             when shouldShowEnv $ showEnv env
             showTree tree
