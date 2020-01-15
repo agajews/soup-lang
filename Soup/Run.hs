@@ -122,7 +122,7 @@ debugFile fname = do
     parsing <- parseStr' file
     case parsing of
         Right (vals, tree, env) -> do
-            print (ListVal vals)
+            putStrLn $ intercalate "\n" (map show vals)
             when shouldShowEnv $ showEnv env
             showTree tree
             return $ Just (vals, env)
