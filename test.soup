@@ -73,20 +73,21 @@
     (log-parser "(define" (eval @2 s1))
     (parse-ws (eval @2 s1) (lambda (@3 _ s2) (do
     (log-parser "_" (eval @3 s2))
-    (parse-ident (eval @3 s2) (lambda (@4 name s3) (do
+    (parse-ident (eval @3 s2) (lambda (@4 name s3) (apply (lambda (@4' name1) (do
     (log-parser (eval @4 name) (eval @4 s3))
     (parse-ws (eval @4 s3) (lambda (@5 _ s4) (do
     (log-parser "_" (eval @5 s4))
-    (parse (eval @5 s4) (pexp (lambda (@6 val s5) (do
-    (log-parser (eval @6 val) (eval @6 s5))
+    (parse (eval @5 s4) (pexp (lambda (@6 val s5)
     (parse-str ")" (eval @6 s5) (lambda (@7 _ s6) (apply
         (lambda (@8 var val1) (do
+            (log-parser ")" (eval @6 s6))
             (prepend! pexp (lambda (@9 s' c')
-                (parse-str name (eval @9 s') (lambda (@10 _ s'1)
+                (parse-str name1 (eval @9 s') (lambda (@10 _ s'1)
                 (apply (eval @9 c') var (eval @10 s'1))))))
             (apply (eval @1 c) (quote (apply set! var val)) (eval @7 s6))))
-        (gen-var name)
-        (eval @6 val)))))))))))))))))))))))
+        (gen-var name1)
+        (eval @6 val))))))))))))
+        (eval @4 name)))))))))))))
 
 (define x (+ 3 4))
 (run x)
