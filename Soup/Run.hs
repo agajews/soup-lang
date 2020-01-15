@@ -152,6 +152,8 @@ runFile fname = do
     case res of
         Just (vals, env) -> do
             putStrLn "\n=== RUNNING FILE ==="
-            _ <- runEval (env, emptyTree) $ mapM eval vals
-            return ()
+            runRes <- runEval (env, emptyTree) $ mapM eval vals
+            case runRes of
+                Right _          -> return ()
+                Left (err, _, _) -> print err
         Nothing -> return ()

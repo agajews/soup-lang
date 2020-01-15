@@ -19,6 +19,12 @@ builtins :: [(String, Value)]
 builtins = [function "+" $ intBinOp (+),
             function "-" $ intBinOp (-),
             function "*" $ intBinOp (*),
+            function ">" $ intBoolBinOp (>),
+            function "<" $ intBoolBinOp (<),
+            function ">=" $ intBoolBinOp (>=),
+            function "<=" $ intBoolBinOp (<=),
+            function "==" $ intBoolBinOp (==),
+            function "!=" $ intBoolBinOp (/=),
             function "gen-var" genVar,
             function "do" doFun,
             function "cons" cons,
@@ -75,6 +81,12 @@ logParserFun _ = throwError InvalidArguments
 intBinOp :: (Integer -> Integer -> Integer) -> [Value] -> Eval Value
 intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
 intBinOp _ _                     = throwError InvalidArguments
+
+intBoolBinOp :: (Integer -> Integer -> Bool) -> [Value] -> Eval Value
+intBoolBinOp op [IntVal x, IntVal y] = case (op x y) of
+    True  -> return $ IntVal x
+    False -> return $ ListVal []
+intBoolBinOp _ _ = throwError InvalidArguments
 
 genVar :: [Value] -> Eval Value
 genVar [StringVal name] = genIdent name >>= return . Variable
