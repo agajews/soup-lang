@@ -127,9 +127,9 @@ debugFile fname = do
             showTree tree
             return $ Just (vals, env)
         Left (err, tree, env) -> do
-            putStrLn $ "Error: " ++ show err
             when shouldShowEnv $ showEnv env
             showTree tree
+            putStrLn $ "Error: " ++ show err
             return Nothing
     where
         showTree tree = do

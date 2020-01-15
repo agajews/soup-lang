@@ -178,8 +178,9 @@ parseRun pexp = do
 parseInt :: Parser Value
 parseInt = do
     digits <- parseWhile isDigit
-    logDebug $ show digits
-    return $ IntVal $ read digits
+    let num = read digits
+    logDebug $ show num
+    return $ IntVal num
 
 parseStr :: Parser Value
 parseStr = do
