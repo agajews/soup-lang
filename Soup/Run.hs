@@ -116,7 +116,7 @@ parseStr s = do
 --         Right (vals, _, _) -> Right $ last vals
 --         Left err           -> Left err
 
-debugFile :: String -> IO ([Value], Env)
+debugFile :: String -> IO (Maybe ([Value], Env))
 debugFile fname = do
     file <- readFile fname
     parsing <- parseStr' file
@@ -125,12 +125,12 @@ debugFile fname = do
             print (ListVal vals)
             when shouldShowEnv $ showEnv env
             showTree tree
-            return (vals, env)
+            return $ Just (vals, env)
         Left (err, tree, env) -> do
             putStrLn $ "Error: " ++ show err
             when shouldShowEnv $ showEnv env
             showTree tree
-            return ([], env)
+            return Nothing
     where
         showTree tree = do
             putStrLn "\n=== DEBUG OUTPUT ==="
@@ -148,7 +148,10 @@ debugFile fname = do
 runFile :: String -> IO ()
 runFile fname = do
     putStrLn "=== PARSING FILE ==="
-    (vals, env) <- debugFile fname
-    putStrLn "\n=== RUNNING FILE ==="
-    _ <- runEval (env, emptyTree) $ mapM eval vals
-    return ()
+    res <- debugFile fname
+    case res of
+        Just (vals, env) -> do
+            putStrLn "\n=== RUNNING FILE ==="
+            _ <- runEval (env, emptyTree) $ mapM eval vals
+            return ()
+        Nothing -> return ()

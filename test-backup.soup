@@ -22,7 +22,7 @@
         (lambda (@1 var) (lambda (@2 s c)
             (parse-str "define-var" (eval @2 s) (lambda (@3 _ s1) (apply (lambda (@4 c2 s2) (do
                 (log-parser "'define-var" s2)
-                (apply c2 var s2))) (eval @3 c) (eval @3 s1))))))
+                (apply c2 var s2))) (eval @2 c) (eval @3 s1))))))
         (gen-var "define-var"))
     pexp)))
 
@@ -34,7 +34,7 @@
                     (lambda (@6 c2 s2) (do
                         (log-parser (cat "'" name1) s2)
                         (apply c2 var s2)))
-                    (eval @5 c)
+                    (eval @4 c)
                     (eval @5 s1)))))
             pexp))
         (apply def! (list) var val))) (gen-var name1))) (eval @1 name)))))
@@ -42,43 +42,57 @@
 (run (define-var "prepend!" (lambda (@1 l x)
     (apply set! l (cons x (eval @1 l))))))
 
-(run (define-var "parse-while" (lambda (@1 pred s c) (apply (lambda (@2 l)
+(run (define-var "parse-while" (lambda (@1 pred s c) (apply (lambda (@2 l) (do
     (if (empty-str (head l))
         (list)
-        (apply (eval @2 c) (head l) (head (tail l)))))
+        (apply (eval @1 c) (head l) (head (tail l))))))
     (span (eval @1 pred) (eval @1 s))))))
 
 (run (define-var "parse-ws" (lambda (@1 s c)
     (parse-while
-        (lambda (@2 x) (elem (list " " "\n" "\t") x))
+        (lambda (@2 x) (elem (list " " "\n" "\t") (eval @2 x)))
         (eval @1 s)
-        (eval @1 c)))))
+        (lambda (@2 v s1) ((eval @1 c) (eval @2 v) (eval @2 s1)))))))
 
 (run (define-var "parse-ident" (lambda (@1 s c)
     (parse-while
-        (lambda (@2 x) (or (is-alpha-num x) (elem (str->list "~!@#$%^&*-=+_|'<>?") x)))
+        (lambda (@2 x) (do
+            (puts (cat "got x: '" x "'"))
+            (or (is-alpha-num x) (elem (str->list "~!@#$%^&*-=+_|'<>?") x))))
         (eval @1 s)
-        (lambda (@2 name s1) (apply (lambda (@3 c2 name2 s2)
-            (if (and is-digit (str->list name))
+        (lambda (@2 name s1) (apply (lambda (@3 c2 name2 s2) (do
+            (puts "continuing!")
+            (print (all (map is-digit (str->list name))))
+            (if (all (map is-digit (str->list name)))
                 (list)
-                (c2 name2 s2)))
-            c name s1))))))
+                (c2 name2 s2))))
+            (eval @1 c) (eval @2 name) (eval @2 s1)))))))
 
 (run (prepend! pexp (lambda (@1 s c)
     (parse-str "(define" (eval @1 s) (lambda (@2 _ s1) (do
-        (log-parser "(define" s1)
-        (parse-ws (eval @2 s1) (lambda (@3 _ s2)
-        (parse-ident (eval @3 s2) (lambda (@4 name s3)
-        (parse-ws (eval @4 s3) (lambda (@5 _ s4)
-        (parse (eval @5 s4) (pexp (lambda (@6 val s5)
-        (parse-str ")" (eval @6 s5) (lambda (@7 _ s6) (apply
-            (lambda (@8 var val1) (do
-                (prepend! pexp (lambda (@9 s' c')
-                    (parse-str name (eval @9 s') (lambda (@10 _ s'1)
-                    (apply (eval @10 c') var (eval @10 s'1))))))
-                (apply (eval @8 c) (quote (apply set! var val)) (eval @8 s6))))
-            (gen-var name)
-            (eval @7 val))))))))))))))))))
+    (log-parser "(define" (eval @2 s1))
+    (parse-ws (eval @2 s1) (lambda (@3 _ s2) (do
+    (log-parser "_" (eval @3 s2))
+    (parse-ident (eval @3 s2) (lambda (@4 name s3) (apply (lambda (@4' name1) (do
+    (log-parser (eval @4 name) (eval @4 s3))
+    (parse-ws (eval @4 s3) (lambda (@5 _ s4) (do
+    (log-parser "_" (eval @5 s4))
+    (parse (eval @5 s4) (pexp (lambda (@6 val s5)
+    (parse-str ")" (eval @6 s5) (lambda (@7 _ s6) (apply
+        (lambda (@8 var val1) (do
+            (log-parser ")" (eval @6 s6))
+            (prepend! pexp (lambda (@9 s' c')
+                (parse-str name1 (eval @9 s') (lambda (@10 _ s'1) (do
+                (log-parser name1 (eval @10 s'1))
+                (apply (eval @9 c') var (eval @10 s'1)))))))
+            (apply (eval @1 c) (. set! var val1) (eval @7 s6))))
+        (gen-var name1)
+        (eval @6 val))))))))))))
+        (eval @4 name)))))))))))))
 
 (define x (+ 3 4))
-(run x)
+(print x)
+(define y 2)
+(+ x 2)
+(define y (+ x 2))
+(print y)
