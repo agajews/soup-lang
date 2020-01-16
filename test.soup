@@ -84,6 +84,7 @@
 (run (define otherwise true))
 (run (define fst (fun (l) (head l))))
 (run (define snd (fun (l) (head (tail l)))))
+(run (define trd (fun (l) (head (tail (tail l))))))
 (run (define str-head (fun (s) (head (str->list s)))))
 (run (define str-tail (fun (s) (list->str (tail (str->list s))))))
 
@@ -101,10 +102,6 @@
         (apply c (read-int digits) s1)))))))
 
 (run (define int (list int-parser)))
-
-(run (define int-> (fun (s c)
-    (parse s (int (lambda (@1 val s1)
-        (apply c (list (quote int) val) (eval @1 s1))))))))
 
 (run (define char->code (fun (char) (cond
     ((= char "b") "\b")
@@ -153,25 +150,26 @@
 
 (run (define string (list string-parser)))
 
-(run (define string-> (fun (s c)
-    (parse s (string (lambda (@1 val s1)
-        (apply c (list (quote string) val) (eval @1 s1))))))))
-
 (run (define literal-parser (fun (name val) (fun (s c)
     (parse-str name s (fun (_ s1) (do
         (log-parser (cat "'" name) s1)
         (apply c val s1))))))))
 
-(run (define pexp-> (fun (s c)
-    (parse s (pexp (lambda (@1 val s1)
-        (apply c (list (quote pexp) val) (eval @1 s1))))))))
+(run (define id-type-converter (lambda (@1 t) (fun (s c)
+    (parse s ((eval @1 t) (lambda (@2 val s1) (apply c
+        (list t (fun (var) var) val)
+        (eval @2 s1)))))))))
+
+(run (define string-> (id-type-converter string)))
+(run (define int-> (id-type-converter int)))
+(run (define pexp-> (id-type-converter pexp)))
 
 (run (define bexp (list int-> string-> pexp->)))
 
 (run (define bexp-type (list
-    (literal-parser "int" (quote int))
-    (literal-parser "string" (quote string))
-    (literal-parser "pexp" (quote pexp)))))
+    (literal-parser "int" (list int (quote int)))
+    (literal-parser "string" (list string (quote string)))
+    (literal-parser "pexp" (list pexp (quote pexp))))))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -180,26 +178,21 @@
     (parse-ident s2 (fun (name s3) (do
     (log-parser name s3)
     (parse-ws' s3 (fun (_ s4) (do
-    ((fun (c') (if (and (not (empty-str s4)) (= (str-head s4) ":"))
-        (do
-            (log-parser ":" (str-tail s4))
-            (parse-ws' (str-tail s4) (fun (_ s')
-            (parse s' (bexp-type c')))))
-        (apply c' (list) s4))) (lambda (@1 t s5) (do
-    (parse-ws' (eval @1 s5) (fun (_ s6) (do
-    (parse-str "=" s6 (fun (_ s7) (do
-    (log-parser "=" s7)
-    (parse-ws s7 (fun (_ s8)
-    (parse s8 ((if t (eval @1 t) bexp) (lambda (@2 val s9)
-    ((fun (var) (do
-        (define t' (if t t (fst val)))
-        (define val' (if t val (snd val)))
+    (parse-str "=" s4 (fun (_ s5) (do
+    (log-parser "=" s5)
+    (parse-ws s5 (fun (_ s6)
+    (parse s6 (bexp (lambda (@1 val s9) (do
+        (define var (gen-var name))
+        (define t' (fst val))
+        (define meta' (snd val))
+        (define val' (trd val))
         (apply prepend! t' (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
-            (apply c' var s'1)))))))
-        (apply c (. set! var val') (eval @2 s9))))
-    (gen-var name)))))))))))))))))))))))))))))))
+            (apply c' (meta' (quote var)) s'1)))))))
+        (apply c
+            (. set! (quote var) val')
+            (eval @1 s9))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
 
