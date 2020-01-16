@@ -159,7 +159,7 @@
 
 (run (define literal-parser (fun (name val) (fun (s c)
     (parse-str name s (fun (_ s1) (do
-        (log-parser name s1)
+        (log-parser (cat "'" name) s1)
         (apply c val s1))))))))
 
 (run (define bexp (list int->bexp string->bexp)))
@@ -175,11 +175,10 @@
     (parse-ident s2 (fun (name s3) (do
     (log-parser name s3)
     (parse-ws' s3 (fun (_ s4) (do
-    (log-parser "_" s4)
     ((catch-fail
-        (fun (s' c') (parse-str ":" s (fun (_ s'1)
-            (parse-ws' s'1 (fun  (_ s'2)
-            (parse (bexp-type c')))))))
+        (fun (s' c') (parse-str ":" s' (fun (_ s'1)
+            (parse-ws' s'1 (fun (_ s'2) (do
+            (parse s'2 (bexp-type c'))))))))
         (fun (s' c') (apply c' (list) s'))) s4 (fun (t s5)
     (parse-ws' s5 (fun (_ s6)
     (parse-str "=" s6 (fun (_ s7) (do
@@ -187,7 +186,7 @@
     (parse-ws s7 (fun (_ s8)
     (parse s8 ((if t t bexp) (lambda (@1 val s9)
     ((fun (var) (do
-        (define t' (if t t (fst val)))
+        (define t' (if t (quote t) (fst val)))
         (define val' (if t val (snd val)))
         (apply prepend! t' (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
@@ -198,6 +197,4 @@
 
 (run (prepend! top let-parser))
 
-(run (print top))
-
-let x = 3
+let x: int = 3
