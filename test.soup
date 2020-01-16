@@ -85,6 +85,16 @@
 (run (define fst (fun (l) (head l))))
 (run (define snd (fun (l) (head (tail l)))))
 
+(run (define catch-fail (fun (parser fail-parser) (fun (s c) (do
+    (define res (parser s c))
+    (if res
+        res
+        (fail-parser s c)))))))
+
+(run (define parse-ws' (fun (s c)
+    ((catch-fail parse-ws (fun (s' c')
+        (apply c' (list) s'))) s c))))
+
 (run (define int-parser (fun (s c)
     (parse-while is-digit s (fun (digits s1) (do
         (log-parser digits s1)
@@ -147,7 +157,16 @@
     (parse s (string (lambda (@1 val s1)
         (apply c (list (quote string) val) (eval @1 s1))))))))
 
+(run (define literal-parser (fun (name val) (fun (s c)
+    (parse-str name s (fun (_ s1) (do
+        (log-parser name s1)
+        (apply c val s1))))))))
+
 (run (define bexp (list int->bexp string->bexp)))
+
+(run (define bexp-type (list
+    (literal-parser "int" (quote int))
+    (literal-parser "string" (quote string))))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -155,18 +174,26 @@
     (parse-ws s1 (fun (_ s2) (do
     (parse-ident s2 (fun (name s3) (do
     (log-parser name s3)
-    (parse-ws s3 (fun (_ s4)
-    (parse-str "=" s4 (fun (_ s5) (do
-    (log-parser "=" s5)
-    (parse-ws s5 (fun (_ s6)
-    (parse s6 (bexp (lambda (@1 val s7)
+    (parse-ws' s3 (fun (_ s4)
+    ((catch-fail
+        (fun (s' c') (parse-str ":" s (fun (_ s'1)
+            (parse-ws' s'1 (fun  (_ s'2)
+            (parse (bexp-type c)))))))
+        (fun (s' c') (apply c (list) s'))) s4 (fun (t s5)
+    (parse-ws' s5 (fun (_ s6)
+    (parse-str "=" s6 (fun (_ s7) (do
+    (log-parser "=" s7)
+    (parse-ws s7 (fun (_ s8)
+    (parse s8 ((if t t bexp) (lambda (@1 val s9)
     ((fun (var) (do
-        (apply prepend! (fst val) (fun (s' c') (do
+        (define t' (if t t (fst val)))
+        (define val' (if t val (snd val)))
+        (apply prepend! t' (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
             (apply c' var s'1)))))))
-        (apply c (. set! var (snd val)) s7)))
-    (gen-var name))))))))))))))))))))))))
+        (apply c (. set! var val') s9)))
+    (gen-var name))))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
 
