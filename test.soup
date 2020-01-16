@@ -162,4 +162,16 @@
     (parse-ws s3 (fun (_ s4)
     (parse-str "=" s4 (fun (_ s5) (do
     (log-parser "=" s5)
-    (
+    (parse-ws s5 (fun (_ s6)
+    (parse s6 (bexp (lambda (@1 val s7)
+    (parse-str "\n" s7 (fun (_ s8) (do
+    (log-parser "$" s8)
+    ((fun (var) (do
+        (apply prepend! (fst val) (fun (s' c') (do
+            (parse-str name s' (fun (_ s'1) (do
+            (log-parser (cat "'" name) s'1)
+            (apply c' var s'1)))))))
+        (apply c (. set! var val) s6)))
+    (gen-var name)))))))))))))))))))))))))))
+
+(run (prepend! top let-parser))
