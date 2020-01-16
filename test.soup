@@ -86,7 +86,9 @@
 (run (define snd (fun (l) (head (tail l)))))
 
 (run (define catch-fail (fun (parser fail-parser) (fun (s c) (do
+    (push-debug)
     (define res (parser s c))
+    (pop-debug)
     (if res
         res
         (fail-parser s c)))))))
@@ -176,25 +178,31 @@
     (log-parser name s3)
     (parse-ws' s3 (fun (_ s4) (do
     ((catch-fail
-        (fun (s' c') (parse-str ":" s' (fun (_ s'1)
+        (fun (s' c') (parse-str ":" s' (fun (_ s'1) (do
+            (puts (cat "got to a colon at " (show s'1)))
+            (log-parser ":" s'1)
             (parse-ws' s'1 (fun (_ s'2) (do
-            (parse s'2 (bexp-type c'))))))))
-        (fun (s' c') (apply c' (list) s'))) s4 (fun (t s5)
-    (parse-ws' s5 (fun (_ s6)
+            (parse s'2 (bexp-type c')))))))))
+        (fun (s' c') (apply c' (list) s'))) s4 (lambda (@1 t s5) (do
+    (puts (cat "got t as " (show t)))
+    (parse-ws' (eval @1 s5) (fun (_ s6) (do
+    (log-parser "_" s6)
     (parse-str "=" s6 (fun (_ s7) (do
+    (puts (cat "parsing = at " (show s7)))
     (log-parser "=" s7)
     (parse-ws s7 (fun (_ s8)
-    (parse s8 ((if t t bexp) (lambda (@1 val s9)
+    (parse s8 ((if t (eval @1 t) bexp) (lambda (@2 val s9)
     ((fun (var) (do
-        (define t' (if t (quote t) (fst val)))
+        (define t' (if t t (fst val)))
         (define val' (if t val (snd val)))
         (apply prepend! t' (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
             (apply c' var s'1)))))))
-        (apply c (. set! var val') s9)))
-    (gen-var name)))))))))))))))))))))))))))))
+        (apply c (. set! var val') (eval @2 s9))))
+    (gen-var name)))))))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
 
 let x: int = 3
+let y = x

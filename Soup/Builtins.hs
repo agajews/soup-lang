@@ -52,6 +52,8 @@ builtins = [function "+" $ intBinOp (+),
             function "print" printFun,
             function "puts" putsFun,
             function "scope" scopeFun,
+            function "push-debug" pushDebugFun,
+            function "pop-debug" popDebugFun,
             function "or" orFun,
             function "and" andFun,
             function "all" allFun,
@@ -258,6 +260,14 @@ scopeFun [] = do
     s <- getScope
     return $ scopeToVal s
 scopeFun _ = throwError InvalidArguments
+
+pushDebugFun :: [Value] -> Eval Value
+pushDebugFun [] = pushDebug >> return (ListVal [])
+pushDebugFun _  = throwError InvalidArguments
+
+popDebugFun :: [Value] -> Eval Value
+popDebugFun [] = popDebug >> return (ListVal [])
+popDebugFun _  = throwError InvalidArguments
 
 orFun :: [Value] -> Eval Value
 orFun [] = return $ ListVal []
