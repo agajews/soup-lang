@@ -102,7 +102,7 @@
 
 (run (define int (list int-parser)))
 
-(run (define int->bexp (fun (s c)
+(run (define int-> (fun (s c)
     (parse s (int (lambda (@1 val s1)
         (apply c (list (quote int) val) (eval @1 s1))))))))
 
@@ -153,7 +153,7 @@
 
 (run (define string (list string-parser)))
 
-(run (define string->bexp (fun (s c)
+(run (define string-> (fun (s c)
     (parse s (string (lambda (@1 val s1)
         (apply c (list (quote string) val) (eval @1 s1))))))))
 
@@ -162,11 +162,16 @@
         (log-parser (cat "'" name) s1)
         (apply c val s1))))))))
 
-(run (define bexp (list int->bexp string->bexp)))
+(run (define pexp-> (fun (s c)
+    (parse s (pexp (lambda (@1 val s1)
+        (apply c (list (quote pexp) val) (eval @1 s1))))))))
+
+(run (define bexp (list int-> string-> pexp->)))
 
 (run (define bexp-type (list
     (literal-parser "int" (quote int))
-    (literal-parser "string" (quote string)))))
+    (literal-parser "string" (quote string))
+    (literal-parser "pexp" (quote pexp)))))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -198,5 +203,6 @@
 
 (run (prepend! top let-parser))
 
-let x: int = 3
-let y = z
+let x = 3
+let y = (+ x 2)
+(print y)
