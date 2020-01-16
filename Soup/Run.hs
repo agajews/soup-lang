@@ -41,7 +41,7 @@ showDebugTree tree = showTree tree where
     processTree t = sortMarked . markDepth 0 . flipLogs . stripEmpty $ t
     showTree t = intercalate "\n" (showTrees 0 "" [processTree t])
     flipLogs (Tree logs children) = Tree (reverse logs) (map flipLogs children)
-    stripEmpty (Tree xs children) = Tree xs (map stripEmpty $ filter notEmpty children)
+    stripEmpty (Tree xs children) = Tree xs (filter notEmpty $ map stripEmpty children)
 
     notEmpty (Tree [] []) = False
     notEmpty _            = True
@@ -76,6 +76,7 @@ showDebugTree tree = showTree tree where
     showLineno n pad = printf ("%" ++ show (linenoDigits + pad) ++ "d") n
 
     startLineno (Tree ((_, p) : _) _) = lineno p
+    startLineno (Tree [] (t : _))     = startLineno t
     startLineno _                     = undefined
     linenoDigits = length $ show $ programLines
     lineno p = programLines - nlines p + 1

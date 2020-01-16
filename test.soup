@@ -84,10 +84,6 @@
 (run (define otherwise true))
 (run (define fst (fun (l) (head l))))
 (run (define snd (fun (l) (head (tail l)))))
-(run (define drop (fun (n l) (if (= n 0) l
-    (drop (- n 1) (tail l))))))
-(run (define take (fun (n l) (if (= n 0) (list)
-    (cons (head l) (take (- n 1) (tail l)))))))
 
 (run (define int-parser (fun (s c)
     (parse-while is-digit s (fun (digits s1) (do
@@ -112,13 +108,13 @@
 
 (run (define take-string (list)))
 
-(run (define take-string-rec (m s) (do
+(run (define take-string-rec (fun (m s) (do
     (define rest (take-string s))
     (if rest
         (list
             (cat m (fst rest))
             (snd rest))
-        (list)))))
+        (list))))))
 
 (run (set! take-string (fun (s) (cond
     ((empty-str s) (list))
@@ -131,7 +127,7 @@
         (head s)
         (tail s)))))))))
 
-(run (define (string-parser (fun (s c)
+(run (define string-parser (fun (s c)
     (parse-str "\"" s (fun (_ s1) (do
     (log-parser "\"" s1)
     (define t (take-string s1))
@@ -143,7 +139,7 @@
             (define s' (snd t))
             (parse-str "\"" (fun (_ s2) (do
                 (log-parser (show m) s2)
-                (apply c m s2))))))))))))))
+                (apply c m s2)))))))))))))
 
 (run (define string (list string-parser)))
 
@@ -164,14 +160,16 @@
     (log-parser "=" s5)
     (parse-ws s5 (fun (_ s6)
     (parse s6 (bexp (lambda (@1 val s7)
-    (parse-str "\n" s7 (fun (_ s8) (do
-    (log-parser "$" s8)
     ((fun (var) (do
         (apply prepend! (fst val) (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
             (apply c' var s'1)))))))
-        (apply c (. set! var val) s6)))
-    (gen-var name)))))))))))))))))))))))))))
+        (apply c (. set! var (snd val)) s7)))
+    (gen-var name))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
+
+(run (print top))
+
+let x = 3

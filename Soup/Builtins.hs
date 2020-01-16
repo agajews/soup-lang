@@ -29,6 +29,7 @@ builtins = [function "+" $ intBinOp (+),
             function "<=" $ intBoolBinOp (<=),
             function "=" eqFun,
             function "!=" neqFun,
+            function "not" notFun,
             function "read-int" readInt,
             function "show" showFun,
             function "gen-var" genVar,
@@ -63,7 +64,7 @@ builtins = [function "+" $ intBinOp (+),
             macro "set!" set,
             macro "def!" def,
             macro "if" ifFun,
-            macro "cond" condFun,
+            macro "cond" condMacro,
             macro "apply" apply,
             macro "quote" quote]
 
@@ -111,12 +112,17 @@ eqFun [StringVal x, StringVal y] = return $ boolToVal (x == y)
 eqFun _                          = return $ boolToVal False
 
 neqFun :: [Value] -> Eval Value
-eqFun [IntVal x, IntVal y]       = return $ boolToVal (x != y)
-eqFun [StringVal x, StringVal y] = return $ boolToVal (x != y)
-eqFun _                          = return $ boolToVal True
+neqFun [IntVal x, IntVal y]       = return $ boolToVal (x /= y)
+neqFun [StringVal x, StringVal y] = return $ boolToVal (x /= y)
+neqFun _                          = return $ boolToVal True
+
+notFun :: [Value] -> Eval Value
+notFun [ListVal []] = return $ ListVal []
+notFun [_]          = return $ IntVal 1
+notFun _            = throwError InvalidArguments
 
 readInt :: [Value] -> Eval Value
-readInt [StringVal s] = case readMaybe of
+readInt [StringVal s] = case readMaybe s of
     Just x  -> return $ IntVal x
     Nothing -> throwError InvalidArguments
 readInt _ = throwError InvalidArguments
