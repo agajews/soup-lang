@@ -12,6 +12,8 @@ import Soup.Eval
 import Soup.Parse
 import Soup.Value
 
+import Text.Read
+
 import Control.Monad.Except
 
 import Data.Char
@@ -25,8 +27,10 @@ builtins = [function "+" $ intBinOp (+),
             function "<" $ intBoolBinOp (<),
             function ">=" $ intBoolBinOp (>=),
             function "<=" $ intBoolBinOp (<=),
-            function "=" $ intBoolBinOp (==),
-            function "!=" $ intBoolBinOp (/=),
+            function "=" eqFun,
+            function "!=" neqFun,
+            function "read-int" readInt,
+            function "show" showFun,
             function "gen-var" genVar,
             function "do" doFun,
             function "cons" cons,
@@ -59,6 +63,7 @@ builtins = [function "+" $ intBinOp (+),
             macro "set!" set,
             macro "def!" def,
             macro "if" ifFun,
+            macro "cond" condFun,
             macro "apply" apply,
             macro "quote" quote]
 
@@ -90,11 +95,35 @@ intBinOp :: (Integer -> Integer -> Integer) -> [Value] -> Eval Value
 intBinOp op [IntVal x, IntVal y] = return $ IntVal (op x y)
 intBinOp _ _                     = throwError InvalidArguments
 
+boolToVal :: Bool -> Value
+boolToVal True  = IntVal 1
+boolToVal False = ListVal []
+
 intBoolBinOp :: (Integer -> Integer -> Bool) -> [Value] -> Eval Value
 intBoolBinOp op [IntVal x, IntVal y] = case (op x y) of
     True  -> return $ IntVal x
     False -> return $ ListVal []
 intBoolBinOp _ _ = throwError InvalidArguments
+
+eqFun :: [Value] -> Eval Value
+eqFun [IntVal x, IntVal y]       = return $ boolToVal (x == y)
+eqFun [StringVal x, StringVal y] = return $ boolToVal (x == y)
+eqFun _                          = return $ boolToVal False
+
+neqFun :: [Value] -> Eval Value
+eqFun [IntVal x, IntVal y]       = return $ boolToVal (x != y)
+eqFun [StringVal x, StringVal y] = return $ boolToVal (x != y)
+eqFun _                          = return $ boolToVal True
+
+readInt :: [Value] -> Eval Value
+readInt [StringVal s] = case readMaybe of
+    Just x  -> return $ IntVal x
+    Nothing -> throwError InvalidArguments
+readInt _ = throwError InvalidArguments
+
+showFun :: [Value] -> Eval Value
+showFun [x] = return $ StringVal $ show x
+showFun _   = throwError InvalidArguments
 
 genVar :: [Value] -> Eval Value
 genVar [StringVal name] = genIdent name >>= return . Variable
@@ -291,6 +320,15 @@ ifFun [cond, thenExpr, elseExpr] = do
         ListVal [] -> eval elseExpr
         _          -> eval thenExpr
 ifFun _ = throwError InvalidArguments
+
+condMacro :: [Value] -> Eval Value
+condMacro (FuncCall cond [action] : rest) = do
+    b <- eval cond
+    case b of
+        ListVal [] -> condMacro rest
+        _          -> eval action
+condMacro [] = return $ ListVal []
+condMacro _ = throwError InvalidArguments
 
 apply :: [Value] -> Eval Value
 apply (f:args) = do
