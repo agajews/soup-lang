@@ -58,7 +58,7 @@
         (fun (name s1)
             (if (all (map is-digit (str->list name)))
                 (list)
-                (c name s1)))))))
+                (apply c name s1)))))))
 
 (run (prepend! pexp (fun (s c)
     (parse-str "(define" s (fun (_ s1) (do
@@ -79,14 +79,87 @@
                 (apply c (. set! var val) s6)))))))))))
         (gen-var name)))))))))))))
 
-(define x (+ 3 4))
-(print x)
-(define y (+ x 2))
-(print y)
+(run (define true 1))
+(run (define false (list)))
+(run (define otherwise true))
+(run (define fst (fun (l) (head l))))
+(run (define snd (fun (l) (head (tail l)))))
+(run (define drop (fun (n l) (if (= n 0) l
+    (drop (- n 1) (tail l))))))
+(run (define take (fun (n l) (if (= n 0) (list)
+    (cons (head l) (take (- n 1) (tail l)))))))
 
-(define factorial (fun (n) (if (< n 1)
-    1
-    (* n (factorial (- n 1))))))
+(run (define int-parser (fun (s c)
+    (parse-while is-digit s (fun (digits s1) (do
+        (log-parser digits s1)
+        (apply c (read-int digits) s1)))))))
 
-(print (factorial x))
-(print (factorial y))
+(run (define int (list int-parser)))
+
+(run (define int->bexp (fun (s c)
+    (parse s (int (lambda (@1 val s1)
+        (apply c (list (quote int) val) (eval @1 s1))))))))
+
+(run (define char->code (fun (char) (cond
+    ((= char "b") "\b")
+    ((= char "n") "\n")
+    ((= char "f") "\f")
+    ((= char "r") "\r")
+    ((= char "t") "\t")
+    ((= char "\\") "\\")
+    ((= char "\"") "\"")
+    (otherwise char)))))
+
+(run (define take-string (list)))
+
+(run (define take-string-rec (m s) (do
+    (define rest (take-string s))
+    (if rest
+        (list
+            (cat m (fst rest))
+            (snd rest))
+        (list)))))
+
+(run (set! take-string (fun (s) (cond
+    ((empty-str s) (list))
+    ((= (head s) "\"") (list "" s))
+    ((= (head s) "\\") (if (empty-str (tail s)) (list)
+        (take-string-rec
+            (char->code (snd s))
+            (drop 2 s))
+    (otherwise (take-string-rec
+        (head s)
+        (tail s)))))))))
+
+(run (define (string-parser (fun (s c)
+    (parse-str "\"" s (fun (_ s1) (do
+    (log-parser "\"" s1)
+    (define t (take-string s1))
+    (cond
+        ((not t) (list))
+        ((empty-str (fst t)) (list))
+        (otherwise (do
+            (define m (fst t))
+            (define s' (snd t))
+            (parse-str "\"" (fun (_ s2) (do
+                (log-parser (show m) s2)
+                (apply c m s2))))))))))))))
+
+(run (define string (list string-parser)))
+
+(run (define string->bexp (fun (s c)
+    (parse s (string (lambda (@1 val s1)
+        (apply c (list (quote string) val) (eval @1 s1))))))))
+
+(run (define bexp (list int->bexp string->bexp)))
+
+(run (define let-parser (fun (s c)
+    (parse-str "let" s (fun (_ s1) (do
+    (log-parser "let" s1)
+    (parse-ws s1 (fun (_ s2) (do
+    (parse-ident s2 (fun (name s3) (do
+    (log-parser name s3)
+    (parse-ws s3 (fun (_ s4)
+    (parse-str "=" s4 (fun (_ s5) (do
+    (log-parser "=" s5)
+    (
