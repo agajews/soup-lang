@@ -84,18 +84,16 @@
 (run (define otherwise true))
 (run (define fst (fun (l) (head l))))
 (run (define snd (fun (l) (head (tail l)))))
+(run (define str-head (fun (s) (head (str->list s)))))
+(run (define str-tail (fun (s) (list->str (tail (str->list s))))))
 
-(run (define catch-fail (fun (parser fail-parser) (fun (s c) (do
-    (push-debug)
-    (define res (parser s c))
-    (pop-debug)
-    (if res
-        res
-        (fail-parser s c)))))))
+(run (define parse-while' (fun (pred s c) (do
+    (define l (span pred s))
+    (apply c (fst l) (snd l))))))
 
-(run (define parse-ws' (fun (s c)
-    ((catch-fail parse-ws (fun (s' c')
-        (apply c' (list) s'))) s c))))
+(run (define parse-ws' (fun (s c) (parse-while'
+    (fun (x) (elem (list " " "\n" "\t") x))
+    s c))))
 
 (run (define int-parser (fun (s c)
     (parse-while is-digit s (fun (digits s1) (do
@@ -130,14 +128,14 @@
 
 (run (set! take-string (fun (s) (cond
     ((empty-str s) (list))
-    ((= (head s) "\"") (list "" s))
-    ((= (head s) "\\") (if (empty-str (tail s)) (list)
+    ((= (str-head s) "\"") (list "" s))
+    ((= (str-head s) "\\") (if (empty-str (str-tail s)) (list)
         (take-string-rec
             (char->code (snd s))
             (drop 2 s))
     (otherwise (take-string-rec
-        (head s)
-        (tail s)))))))))
+        (str-head s)
+        (str-tail s)))))))))
 
 (run (define string-parser (fun (s c)
     (parse-str "\"" s (fun (_ s1) (do
@@ -177,18 +175,14 @@
     (parse-ident s2 (fun (name s3) (do
     (log-parser name s3)
     (parse-ws' s3 (fun (_ s4) (do
-    ((catch-fail
-        (fun (s' c') (parse-str ":" s' (fun (_ s'1) (do
-            (puts (cat "got to a colon at " (show s'1)))
-            (log-parser ":" s'1)
-            (parse-ws' s'1 (fun (_ s'2) (do
-            (parse s'2 (bexp-type c')))))))))
-        (fun (s' c') (apply c' (list) s'))) s4 (lambda (@1 t s5) (do
-    (puts (cat "got t as " (show t)))
+    ((fun (c') (if (and (not (empty-str s4)) (= (str-head s4) ":"))
+        (do
+            (log-parser ":" (str-tail s4))
+            (parse-ws' (str-tail s4) (fun (_ s')
+            (parse s' (bexp-type c')))))
+        (apply c' (list) s4))) (lambda (@1 t s5) (do
     (parse-ws' (eval @1 s5) (fun (_ s6) (do
-    (log-parser "_" s6)
     (parse-str "=" s6 (fun (_ s7) (do
-    (puts (cat "parsing = at " (show s7)))
     (log-parser "=" s7)
     (parse-ws s7 (fun (_ s8)
     (parse s8 ((if t (eval @1 t) bexp) (lambda (@2 val s9)
@@ -205,4 +199,4 @@
 (run (prepend! top let-parser))
 
 let x: int = 3
-let y = x
+let y = z

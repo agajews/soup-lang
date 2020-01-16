@@ -54,14 +54,14 @@ builtins = [function "+" $ intBinOp (+),
             function "scope" scopeFun,
             function "push-debug" pushDebugFun,
             function "pop-debug" popDebugFun,
-            function "or" orFun,
-            function "and" andFun,
             function "all" allFun,
             function "any" anyFun,
             function "map" mapFun,
             function "is-alpha-num" alphaNumFun,
             function "is-digit" digitFun,
             function "." funcCallFun,
+            macro "or" orMacro,
+            macro "and" andMacro,
             macro "parse" parseMacro,
             macro "set!" set,
             macro "def!" def,
@@ -119,8 +119,8 @@ neqFun [StringVal x, StringVal y] = return $ boolToVal (x /= y)
 neqFun _                          = return $ boolToVal True
 
 notFun :: [Value] -> Eval Value
-notFun [ListVal []] = return $ ListVal []
-notFun [_]          = return $ IntVal 1
+notFun [ListVal []] = return $ IntVal 1
+notFun [_]          = return $ ListVal []
 notFun _            = throwError InvalidArguments
 
 readInt :: [Value] -> Eval Value
@@ -269,25 +269,12 @@ popDebugFun :: [Value] -> Eval Value
 popDebugFun [] = popDebug >> return (ListVal [])
 popDebugFun _  = throwError InvalidArguments
 
-orFun :: [Value] -> Eval Value
-orFun [] = return $ ListVal []
-orFun (x:xs) = case x of
-    ListVal [] -> orFun xs
-    _          -> return x
-
-andFun :: [Value] -> Eval Value
-andFun [] = return $ ListVal []
-andFun [x] = return x
-andFun (x:xs) = case x of
-    ListVal [] -> return $ ListVal []
-    _          -> andFun xs
-
 allFun :: [Value] -> Eval Value
-allFun [ListVal l] = andFun l
+allFun [ListVal l] = andMacro l
 allFun _           = throwError InvalidArguments
 
 anyFun :: [Value] -> Eval Value
-anyFun [ListVal l] = orFun l
+anyFun [ListVal l] = orMacro l
 anyFun _           = throwError InvalidArguments
 
 mapFun :: [Value] -> Eval Value
@@ -377,3 +364,20 @@ parseMacro (s : pairs) = do
             return (x', y')
         getPairs _                = throwError InvalidArguments
 parseMacro _ = throwError InvalidArguments
+
+orMacro :: [Value] -> Eval Value
+orMacro [] = return $ ListVal []
+orMacro (x:xs) = do
+    x' <- eval x
+    case x' of
+        ListVal [] -> orMacro xs
+        _          -> return x
+
+andMacro :: [Value] -> Eval Value
+andMacro [] = return $ ListVal []
+andMacro [x] = eval x
+andMacro (x:xs) = do
+    x' <- eval x
+    case x' of
+        ListVal [] -> return $ ListVal []
+        _          -> andMacro xs
