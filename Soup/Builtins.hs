@@ -246,7 +246,7 @@ listToStr v = listToStr' v >>= return . StringVal where
     listToStr' _ = throwError InvalidArguments
 
 printFun :: [Value] -> Eval Value
-printFun [v] = liftIO (print v) >> return v
+printFun [v] = liftIO (print v) >> return (ListVal [])
 printFun _   = throwError InvalidArguments
 
 putsFun :: [Value] -> Eval Value

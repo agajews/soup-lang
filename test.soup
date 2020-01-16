@@ -166,7 +166,7 @@
 
 (run (define bexp-type (list
     (literal-parser "int" (quote int))
-    (literal-parser "string" (quote string))))
+    (literal-parser "string" (quote string)))))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -174,12 +174,13 @@
     (parse-ws s1 (fun (_ s2) (do
     (parse-ident s2 (fun (name s3) (do
     (log-parser name s3)
-    (parse-ws' s3 (fun (_ s4)
+    (parse-ws' s3 (fun (_ s4) (do
+    (log-parser "_" s4)
     ((catch-fail
         (fun (s' c') (parse-str ":" s (fun (_ s'1)
             (parse-ws' s'1 (fun  (_ s'2)
-            (parse (bexp-type c)))))))
-        (fun (s' c') (apply c (list) s'))) s4 (fun (t s5)
+            (parse (bexp-type c')))))))
+        (fun (s' c') (apply c' (list) s'))) s4 (fun (t s5)
     (parse-ws' s5 (fun (_ s6)
     (parse-str "=" s6 (fun (_ s7) (do
     (log-parser "=" s7)
@@ -193,7 +194,7 @@
             (log-parser (cat "'" name) s'1)
             (apply c' var s'1)))))))
         (apply c (. set! var val') s9)))
-    (gen-var name))))))))))))))))))))))))))))
+    (gen-var name)))))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
 
