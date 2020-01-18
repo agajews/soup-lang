@@ -76,7 +76,7 @@
             (parse s4 (pexp (lambda (@1 val s5)
             (parse-str ")" (eval @1 s5) (fun (_ s6) (do
                 (log-parser ")" s6)
-                (apply c (. set! var val) s6)))))))))))
+                (apply c (. set! (list var val)) s6)))))))))))
         (gen-var name)))))))))))))
 
 (run (define true 1))
@@ -160,16 +160,20 @@
         (list t (fun (var) var) val)
         (eval @2 s1)))))))))
 
+(run (define void (list)))
+
 (run (define string-> (id-type-converter string)))
 (run (define int-> (id-type-converter int)))
 (run (define pexp-> (id-type-converter pexp)))
+(run (define void-> (id-type-converter void)))
 
-(run (define bexp (list int-> string-> pexp->)))
+(run (define bexp (list int-> string-> pexp-> void->)))
 
 (run (define bexp-type (list
     (literal-parser "int" (list int (quote int)))
     (literal-parser "string" (list string (quote string)))
-    (literal-parser "pexp" (list pexp (quote pexp))))))
+    (literal-parser "pexp" (list pexp (quote pexp)))
+    (literal-parser "void" (list void (quote void))))))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -189,13 +193,51 @@
         (apply prepend! t' (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
-            (apply c' (meta' (quote var)) s'1)))))))
+            (apply c' (meta' var) s'1)))))))
         (apply c
-            (. set! (quote var) val')
+            (. set! (list var val'))
             (eval @1 s9))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
 
+(run (define function (list
+    (literal-parser "puts" (list (quote (list string)) (quote void) (quote puts)))
+    (literal-parser "print" (list (quote (list int)) (quote string) (quote print)))
+    (literal-parser "print" (list (quote (list string)) (quote string) (quote print)))
+    (literal-parser "print" (list (quote (list pexp)) (quote string) (quote print)))
+    (literal-parser "print" (list (quote (list void)) (quote string) (quote print)))
+    (literal-parser "plus" (list (quote (list int int)) (quote int) (quote +))))))
+
+(run (define parse-args (fun (params s c)
+    (if params
+        (parse s ((head params) (lambda (@1 arg s1)
+            (if (tail params) (do
+                    (parse-str "," (eval @1 s1) (fun (_ s2) (do
+                    (log-parser "," s2)
+                    (parse-ws s2 (fun (_ s3)
+                    (parse-args (tail params) s3 (lambda (@2 args s4)
+                    (apply c (cons arg args) (eval @2 s4))))))))))
+                (apply c (list arg) (eval @1 s1))))))
+        (c (list) s)))))
+
+(run (define call-parser (lambda (@1 t) (fun (s c)
+    (parse s (function (fun (fun-desc s1)
+    (parse-str "(" s1 (fun (_ s2) (do
+    (log-parser "(" s2)
+    (define params (eval @1 (fst fun-desc)))
+    (define ret-type (snd fun-desc))
+    (define f (trd fun-desc))
+    (if (!= ret-type t) (list) (do
+        (parse-args params s2 (lambda (@2 args s3)
+        (parse-str ")" (eval @2 s3) (fun (_ s4) (do
+        (log-parser ")" s4)
+        (apply c (. f args) s4))))))))))))))))))
+
+(run (prepend! int (call-parser int)))
+(run (prepend! string (call-parser string)))
+(run (prepend! pexp (call-parser pexp)))
+(run (prepend! void (call-parser void)))
+
 let x = 3
-let y = (+ x 2)
-(print y)
+let y = plus(x, 2)
+let _ = print(y)

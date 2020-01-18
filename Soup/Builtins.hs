@@ -12,7 +12,7 @@ import Soup.Eval
 import Soup.Parse
 import Soup.Value
 
-import Text.Read
+import Text.Read (readMaybe)
 
 import Control.Monad.Except
 
@@ -109,14 +109,16 @@ intBoolBinOp op [IntVal x, IntVal y] = case (op x y) of
 intBoolBinOp _ _ = throwError InvalidArguments
 
 eqFun :: [Value] -> Eval Value
-eqFun [IntVal x, IntVal y]       = return $ boolToVal (x == y)
+eqFun [IntVal x, IntVal y] = return $ boolToVal (x == y)
 eqFun [StringVal x, StringVal y] = return $ boolToVal (x == y)
-eqFun _                          = return $ boolToVal False
+eqFun [Variable (Ident _ x), Variable (Ident _ y)] = return $ boolToVal (x == y)
+eqFun _ = return $ boolToVal False
 
 neqFun :: [Value] -> Eval Value
-neqFun [IntVal x, IntVal y]       = return $ boolToVal (x /= y)
+neqFun [IntVal x, IntVal y] = return $ boolToVal (x /= y)
 neqFun [StringVal x, StringVal y] = return $ boolToVal (x /= y)
-neqFun _                          = return $ boolToVal True
+neqFun [Variable (Ident _ x), Variable (Ident _ y)] = return $ boolToVal (x /= y)
+neqFun _ = return $ boolToVal True
 
 notFun :: [Value] -> Eval Value
 notFun [ListVal []] = return $ IntVal 1
@@ -296,8 +298,8 @@ digitFun [StringVal [c]] = case isDigit c of
 digitFun _ = throwError InvalidArguments
 
 funcCallFun :: [Value] -> Eval Value
-funcCallFun (f : args) = return $ FuncCall f args
-funcCallFun _          = throwError InvalidArguments
+funcCallFun [f, ListVal args] = return $ FuncCall f args
+funcCallFun _                 = throwError InvalidArguments
 
 -- Macros
 
