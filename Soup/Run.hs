@@ -123,10 +123,10 @@ debugFile fname = do
     parsing <- parseStr' file
     case parsing of
         Right (vals, tree, env) -> do
-            putStrLn "=== PARSED EXPRESSIONS ==="
-            putStrLn $ intercalate "\n" (map show vals)
             when shouldShowEnv $ showEnv env
             showTree tree
+            putStrLn "=== PARSED EXPRESSIONS ==="
+            putStrLn $ intercalate "\n" (map show $ filter nonEmpty vals)
             return $ Just (vals, env)
         Left (err, tree, env) -> do
             when shouldShowEnv $ showEnv env
@@ -134,6 +134,8 @@ debugFile fname = do
             putStrLn $ "Error: " ++ show err
             return Nothing
     where
+        nonEmpty (ListVal []) = False
+        nonEmpty _            = True
         showTree tree = do
             putStrLn "\n=== DEBUG OUTPUT ==="
             putStrLn $ showDebugTree tree

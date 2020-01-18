@@ -162,18 +162,11 @@
 
 (run (define void (list)))
 
-(run (define string-> (id-type-converter string)))
-(run (define int-> (id-type-converter int)))
-(run (define pexp-> (id-type-converter pexp)))
-(run (define void-> (id-type-converter void)))
+(run (define string->bexp (id-type-converter string)))
+(run (define int->bexp (id-type-converter int)))
+(run (define void->bexp (id-type-converter void)))
 
-(run (define bexp (list int-> string-> pexp-> void->)))
-
-(run (define bexp-type (list
-    (literal-parser "int" (list int (quote int)))
-    (literal-parser "string" (list string (quote string)))
-    (literal-parser "pexp" (list pexp (quote pexp)))
-    (literal-parser "void" (list void (quote void))))))
+(run (define bexp (list int->bexp string->bexp void->bexp)))
 
 (run (define let-parser (fun (s c)
     (parse-str "let" s (fun (_ s1) (do
@@ -185,20 +178,26 @@
     (parse-str "=" s4 (fun (_ s5) (do
     (log-parser "=" s5)
     (parse-ws s5 (fun (_ s6)
-    (parse s6 (bexp (lambda (@1 val s9) (do
+    (parse s6 (bexp (lambda (@1 bexp-desc s9) (do
         (define var (gen-var name))
-        (define t' (fst val))
-        (define meta' (snd val))
-        (define val' (trd val))
-        (apply prepend! t' (fun (s' c') (do
+        (define t (fst bexp-desc))
+        (define meta (snd bexp-desc))
+        (define val (trd bexp-desc))
+        (apply prepend! t (fun (s' c') (do
             (parse-str name s' (fun (_ s'1) (do
             (log-parser (cat "'" name) s'1)
-            (apply c' (meta' var) s'1)))))))
+            (apply c' (meta var) s'1)))))))
         (apply c
-            (. set! (list var val'))
+            (. set! (list var val))
             (eval @1 s9))))))))))))))))))))))))))
 
 (run (prepend! top let-parser))
+
+(run (define bexp->top (fun (s c)
+    (parse s (bexp (fun (bexp-desc s1)
+    (apply c (trd bexp-desc) s1)))))))
+
+(run (prepend! top bexp->top))
 
 (run (define function (list
     (literal-parser "puts" (list (quote (list string)) (quote void) (quote puts)))
@@ -235,9 +234,28 @@
 
 (run (prepend! int (call-parser int)))
 (run (prepend! string (call-parser string)))
-(run (prepend! pexp (call-parser pexp)))
 (run (prepend! void (call-parser void)))
+
+(run (define bexp-type (list
+    (literal-parser "int" (list int (quote int)))
+    (literal-parser "string" (list string (quote string)))
+    (literal-parser "void" (list void (quote void))))))
+
+(run (define function->bexp (fun (s c)
+    (parse s (function (fun (fun-desc s1) (do
+    (define params (fst fun-desc))
+    (define ret-type (snd fun-desc))
+    (define f (trd fun-desc))
+    (define fun-bexp (list
+        (quote function)
+        (fun (var) (list params ret-type var))
+        f))
+    (apply c fun-bexp s1))))))))
+
+(run (prepend! bexp function->bexp))
 
 let x = 3
 let y = plus(x, 2)
-let _ = print(y)
+print(y)
+let + = plus
+print(+(y, 5))
